@@ -2,12 +2,32 @@
 name = "emberwatch-ml"
 version = "0.1.0"
 description = "EmberWatch ML: data prep, training, evaluation and export"
+# numpy 2.5 and jax 0.12 require Python >= 3.12.
 requires-python = ">=3.12,<3.13"
-# Dependencies (keras, keras-hub, backend, onnxruntime, mlflow...) are added
-# after the research picks the Keras backend and detector.
-dependencies = []
+# Latest releases as of 2026-11-21. Exact installed versions are recorded in
+# every run's env.json.
+dependencies = [
+    "numpy>=2.5.5",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
+    "pillow>=13.0.0",
+    "huggingface_hub>=2.4.0",
+]
+
+[project.optional-dependencies]
+# Model training and ONNX export (JAX backend, per docs/research/03).
+train = [
+    "keras==3.15.1",
+    "keras-hub==0.33.0",
+    "jax[cuda12]>=0.12.1",
+    "onnx>=1.23.2",
+    "onnxruntime>=1.32.0",
+    "jax2onnx>=0.19.1",
+]
 
 [tool.uv]
-# Code lives in ml/src and is run as modules from ml/, e.g.:
-#   uv run python -m src.data.download
+# Code lives in ml/src and runs as modules from ml/:
+#   uv run python -m src.data.pyro_sdis
+# On Kaggle the same deps install with:
+#   uv pip install -r pyproject.toml [--extra train]
 package = false
