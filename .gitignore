@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# Data and model artifacts (large; never commit)
+ml/data/raw/*
+ml/data/processed/*
+ml/artifacts/*
+!ml/data/raw/.gitkeep
+!ml/data/processed/.gitkeep
+!ml/artifacts/.gitkeep
+mlruns/
+mlartifacts/
+*.keras
+*.onnx
+*.tflite
+
+# Node / Next.js
+node_modules/
+.next/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

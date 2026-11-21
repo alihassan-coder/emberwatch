@@ -1,0 +1,13 @@
+[project]
+name = "emberwatch-ml"
+version = "0.1.0"
+description = "EmberWatch ML: data prep, training, evaluation and export"
+requires-python = ">=3.12,<3.13"
+# Dependencies (keras, keras-hub, backend, onnxruntime, mlflow...) are added
+# after the research picks the Keras backend and detector.
+dependencies = []
+
+[tool.uv]
+# Code lives in ml/src and is run as modules from ml/, e.g.:
+#   uv run python -m src.data.download
+package = false
