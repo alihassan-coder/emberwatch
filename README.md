@@ -1,6 +1,6 @@
 # EmberWatch
 
-Spots wildfire smoke on live tower cameras within minutes of ignition. Detections are confirmed over time to cut false alarms, sent to a human review queue, and the reviews are used to improve the model.
+Spots wildfire smoke in tower-camera frames within minutes of the first visible smoke (onset), confirms it over consecutive frames to cut false alarms, and sends alerts to a human operator whose reviews improve the next model. Terms are defined in [GLOSSARY.md](GLOSSARY.md); key decisions are in [docs/decisions/](docs/decisions/).
 
 > Status: Phase 1 (ML) — in progress.
 
