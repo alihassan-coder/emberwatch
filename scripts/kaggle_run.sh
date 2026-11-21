@@ -97,7 +97,7 @@ cmd_run() {
   done
 
   # The job runs the committed code, so uncommitted ML changes would be ignored.
-  git -C "$ROOT" diff --quiet HEAD -- ml scripts || die "commit your ml/ changes first (the Kaggle job runs HEAD)"
+  git -C "$ROOT" diff --quiet HEAD -- ml scripts ':!ml/uv.lock' || die "commit your ml/ changes first (the Kaggle job runs HEAD)"
   local sha branch
   sha="$(git -C "$ROOT" rev-parse HEAD)"
   branch="$(git -C "$ROOT" branch --show-current)"
