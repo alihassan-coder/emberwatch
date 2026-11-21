@@ -123,6 +123,15 @@ def sh(cmd, **kw):
     subprocess.run(cmd, shell=True, check=True, **kw)
     print(f"  ({time.time() - t:.0f}s)", flush=True)
 
+import socket
+try:
+    socket.getaddrinfo("github.com", 443)
+except OSError:
+    raise SystemExit(
+        "EMBERWATCH: this Kaggle session has NO INTERNET. Kaggle blocks internet (and GPUs) "
+        "until the account's phone number is verified: https://www.kaggle.com/settings"
+    )
+
 sh(f"git clone --quiet --filter=blob:none {REPO} /tmp/emberwatch && git -C /tmp/emberwatch checkout --quiet {SHA}")
 sh("pip install --quiet uv")
 extra_flags = " ".join(f"--extra {e}" for e in EXTRAS.split(",") if e)
