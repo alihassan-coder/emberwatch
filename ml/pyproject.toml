@@ -16,6 +16,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Scoring exported .onnx models only (no Keras/JAX): evaluation jobs.
+eval = [
+    "onnxruntime>=1.32.0",
+]
 # Model training and ONNX export (JAX backend, per docs/research/03).
 train = [
     "keras==3.15.1",
