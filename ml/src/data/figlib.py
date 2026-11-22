@@ -16,7 +16,7 @@ Run (from ml/):
     python -m src.data.figlib --max-seqs 6       # quick run
 
 Outputs, under <output_dir>/figlib/:
-    frames/<sequence>/<epoch>_<offset>.jpg   resized so the long side is 1280 px
+    frames-<split>-NNN.tar                   <sequence>/<epoch>_<offset>.jpg, long side 1280 px
     sequences.parquet                        one row per sequence (+ split)
     frames.parquet                           one row per frame (+ label)
     splits_v1.json, stats.json, data_report.md
@@ -40,7 +40,8 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-from src.common.env import git_sha, output_dir
+from src.common import shards as shard_utils
+from src.common.env import data_dir, git_sha, output_dir
 
 BASE_URL = "https://cdn.hpwren.ucsd.edu/HPWREN-FIgLib-Data"
 LONG_SIDE = 1280  # fits 2x2 tiles of 640 for small-plume experiments
@@ -203,8 +204,9 @@ def compute_stats(seqs: pd.DataFrame, frames: pd.DataFrame, heldout: list[str], 
         "sequences_missing_onset_frame": int((~per_seq["has_onset"]).sum()),
         "imagers": seqs["imager"].value_counts().to_dict(),
         "years": seqs["year"].value_counts().sort_index().to_dict(),
-        "orig_resolutions_top": frames.groupby(["orig_width", "orig_height"]).size()
-        .sort_values(ascending=False).head(5).rename(lambda t: f"{t[0]}x{t[1]}").to_dict(),
+        "orig_resolutions_top": {f"{w}x{h}": int(n) for (w, h), n in
+                                 frames.groupby(["orig_width", "orig_height"]).size()
+                                 .sort_values(ascending=False).head(5).items()},
         "stored_gb": round(frames["bytes"].sum() / 1e9, 2),
         "heldout_stations": heldout,
         "failed_sequences": failed,
@@ -244,8 +246,10 @@ def main() -> None:
     args = ap.parse_args()
 
     out = output_dir() / "figlib"
-    frames_root = out / "frames"
-    frames_root.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+    # Loose frames go to scratch disk, grouped by split; only tar shards
+    # become run output (40k loose files get Kaggle fetches rate limited).
+    frames_root = data_dir() / "figlib_frames"
 
     names = list_sequences()
     print(f"[index] {len(names)} sequences listed", flush=True)
@@ -257,7 +261,8 @@ def main() -> None:
 
     started, rows, failed = time.time(), [], []
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(fetch_sequence, n, str(frames_root)): n for n in seqs["sequence"]}
+        futures = {pool.submit(fetch_sequence, r.sequence, str(frames_root / r.split)): r.sequence
+                   for r in seqs.itertuples()}
         for i, fut in enumerate(as_completed(futures), 1):
             res = fut.result()
             rows += res["rows"]
@@ -272,7 +277,7 @@ def main() -> None:
     seqs = seqs[~seqs["sequence"].isin({f["sequence"] for f in failed})]
     frames = frames.merge(seqs[["sequence", "fire_event", "station", "split"]], on="sequence", how="left")
 
-    stats = compute_stats(seqs, frames, heldout, failed)
+    # Save the expensive results before anything that could still fail.
     seqs.to_parquet(out / "sequences.parquet", index=False)
     frames.to_parquet(out / "frames.parquet", index=False)
     splits = {s: sorted(g["sequence"]) for s, g in seqs.groupby("split")}
@@ -282,10 +287,19 @@ def main() -> None:
         "sha256": {k: hashlib.sha256("\n".join(v).encode()).hexdigest() for k, v in splits.items()},
         "splits": splits,
     }, indent=1))
+
+    shard_of: dict[str, str] = {}
+    for split_dir in sorted(p for p in frames_root.iterdir() if p.is_dir()):
+        index = shard_utils.pack(split_dir, out, prefix=f"frames-{split_dir.name}")
+        shard_of.update({f"{split_dir.name}/{k}": v for k, v in index.items()})
+    frames["shard"] = (frames["split"] + "/" + frames["file"]).map(shard_of)
+    frames.to_parquet(out / "frames.parquet", index=False)
+    print(f"[shards] {len(set(shard_of.values()))} tar shard(s) for {len(shard_of)} frames", flush=True)
+
+    stats = compute_stats(seqs, frames, heldout, failed)
     (out / "stats.json").write_text(json.dumps(stats, indent=2, default=str))
     write_report(stats, out / "data_report.md")
     print((out / "data_report.md").read_text())
-
 
 if __name__ == "__main__":
     main()

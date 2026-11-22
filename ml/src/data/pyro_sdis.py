@@ -9,7 +9,7 @@ Run (from ml/):
     python -m src.data.pyro_sdis --limit 50      # quick dry run
 
 Outputs, under <output_dir>/pyro_sdis_v2/:
-    images/<image_name>       original JPEG bytes, untouched
+    images-NNN.tar            original JPEG bytes, untouched, in ~1 GB tar shards
     annotations.parquet       one row per image: metadata, boxes, split
     splits_v2.json            frozen split lockfile (image lists + sha256)
     stats.json                dataset statistics
@@ -39,6 +39,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from PIL import Image
 
+from src.common import shards as shard_utils
 from src.common.env import data_dir, git_sha, output_dir
 
 REPO = "pyronear/pyro-sdis"
@@ -338,21 +339,30 @@ def main() -> None:
     args = ap.parse_args()
 
     out = output_dir() / "pyro_sdis_v2"
-    images_dir = None if args.no_images else out / "images"
+    out.mkdir(parents=True, exist_ok=True)
+    # Loose images go to scratch disk; only tar shards become run output.
+    images_dir = None if args.no_images else data_dir() / "pyro_sdis_images"
     if images_dir:
         images_dir.mkdir(parents=True, exist_ok=True)
 
     shards = args.shards or download(quick=args.limit is not None)
     df = process_shards(shards, images_dir, args.limit)
     df, heldout, dedup = assign_splits(df)
-    stats = compute_stats(df, heldout, dedup)
 
+    # Save the expensive results before anything that could still fail.
     df.to_parquet(out / "annotations.parquet", index=False)
     write_lockfile(df, heldout, out / "splits_v2.json")
-    (out / "stats.json").write_text(json.dumps(stats, indent=2))
+
+    if images_dir:
+        index = shard_utils.pack(images_dir, out, prefix="images")
+        df["shard"] = df["image_name"].map(index)
+        df.to_parquet(out / "annotations.parquet", index=False)
+        print(f"[shards] {len(set(index.values()))} tar shard(s) for {len(index)} images", flush=True)
+
+    stats = compute_stats(df, heldout, dedup)
+    (out / "stats.json").write_text(json.dumps(stats, indent=2, default=str))
     write_report(stats, out / "data_report.md")
     print((out / "data_report.md").read_text())
-
 
 if __name__ == "__main__":
     main()
