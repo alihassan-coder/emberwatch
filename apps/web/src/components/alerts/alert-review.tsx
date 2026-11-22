@@ -88,7 +88,7 @@ function DecisionPanel({ alert }: { alert: PlumeAlert }) {
       <p className="font-heading text-2xl font-semibold text-paper">Is this a fire?</p>
       {!choosingReason ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button className="bg-fire text-paper hover:bg-fire/85" onClick={() => decide({ status: "confirmed" })}>
+          <Button className="bg-fire text-white hover:bg-fire/90" onClick={() => decide({ status: "confirmed" })}>
             Confirm fire
           </Button>
           <Button variant="outline" onClick={() => setChoosingReason(true)}>
@@ -231,7 +231,7 @@ export function AlertReview() {
           The replay is at {r.clock}. Alerts appear here as soon as a camera sees smoke in 2 of 3 frames.
         </p>
         <div className="flex gap-2">
-          <Button onClick={() => replay.seek(3)} className="bg-suspect text-ridge hover:bg-suspect/85">
+          <Button onClick={() => replay.seek(3)}>
             Jump to the first alert
           </Button>
           <Button variant="outline" nativeButton={false} render={<Link href="/" />}>

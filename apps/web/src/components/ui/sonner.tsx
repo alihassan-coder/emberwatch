@@ -6,7 +6,7 @@ import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme="dark" // EmberWatch has one theme (a watch console)
+      theme="light"
       className="toaster group"
       icons={{
         success: (

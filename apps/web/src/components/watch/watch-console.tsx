@@ -96,7 +96,7 @@ function AlertCard({ alert, cameras }: { alert: PlumeAlert; cameras: CameraView[
             {alert.verdict?.status === "confirmed" ? "Confirmed fire" : `Not a fire${alert.verdict?.reason ? `: ${alert.verdict.reason.toLowerCase()}` : ""}`}
           </Badge>
         ) : (
-          <Button className="w-full bg-suspect text-ridge hover:bg-suspect/85" nativeButton={false} render={<Link href={`/alerts?id=${alert.id}`} />}>
+          <Button className="w-full" nativeButton={false} render={<Link href={`/alerts?id=${alert.id}`} />}>
             Review alert
           </Button>
         )}
@@ -158,7 +158,7 @@ export function WatchConsole() {
       <aside aria-labelledby="queue-title" className="space-y-4">
         <div className="flex items-baseline justify-between">
           <h2 id="queue-title" className="font-heading text-2xl font-semibold text-paper">Needs review</h2>
-          {r.needsReview > 0 && <Badge className="bg-suspect text-ridge">{r.needsReview}</Badge>}
+          {r.needsReview > 0 && <Badge>{r.needsReview}</Badge>}
         </div>
         {r.alerts.length === 0 ? (
           <Card className="bg-contours py-5">

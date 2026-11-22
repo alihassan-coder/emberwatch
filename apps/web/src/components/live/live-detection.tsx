@@ -100,7 +100,7 @@ function AlertPipeline({ index }: { index: number }) {
       <ol className="space-y-3">
         {steps.map((s, i) => (
           <li key={s.label} className="flex gap-3">
-            <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold", s.done ? "bg-suspect text-ridge" : "bg-muted text-contour")}>
+            <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold", s.done ? "bg-primary text-primary-foreground" : "bg-muted text-contour")}>
               {i + 1}
             </span>
             <div>
@@ -195,7 +195,7 @@ export function LiveDetection() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={toggle} className="bg-suspect text-ridge hover:bg-suspect/85">
+          <Button onClick={toggle}>
             {playing ? <Pause /> : <Play />}
             {playing ? "Pause" : index === 0 ? "Play the footage" : "Resume"}
           </Button>
