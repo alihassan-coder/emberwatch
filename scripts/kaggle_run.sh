@@ -48,7 +48,7 @@ fetch() {
   dest="$(run_dir "$slug")"
   mkdir -p "$dest"
   log "downloading outputs matching /$pattern/ -> ${dest#"$ROOT"/}"
-  "${KAGGLE[@]}" kernels output "$KAGGLE_USER/$slug" -p "$dest" -o -q --file-pattern "$pattern" || true
+  "${KAGGLE[@]}" kernels output "$KAGGLE_USER/$slug" -p "$dest" -o -q --page-size 200 --file-pattern "$pattern" || true  # big pages: small ones silently dropped files
   local n size
   n=$(find "$dest" -type f | wc -l); size=$(du -sh "$dest" | cut -f1)
   log "fetched $n file(s), $size total"

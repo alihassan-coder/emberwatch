@@ -2,158 +2,178 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { EyeOff } from "lucide-react";
 import { cn } from "cn";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CameraFrame } from "@/components/frame/camera-frame";
-import { FireFinder } from "./fire-finder";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { RealFrame } from "@/components/frame/real-frame";
+import { FireFinder, type FinderCamera } from "./fire-finder";
 import { ScoreSpark } from "./score-spark";
 import { StateChip } from "./state-chip";
-import { DEMO_ALERTS, DEMO_CAMERAS, cameraById } from "@/lib/demo-data";
-import { STATE_TONE, ago, compass, coords, pct } from "@/lib/format";
-import type { Alert, Camera } from "@/lib/types";
+import { CAMERA_FOV, type CameraView, type PlumeAlert } from "@/lib/replay/engine";
+import { replay, useReplay } from "@/lib/replay/store";
+import { STATE_TONE, compass, coords, pct, takenAt } from "@/lib/format";
 
-function CameraTile({ cam, selected, onSelect }: { cam: Camera; selected: boolean; onSelect: () => void }) {
+export const toFinder = (cams: CameraView[]): FinderCamera[] =>
+  cams.map((c) => ({ id: c.id, site: c.siteName, position: c.position, heading: c.heading, fov: CAMERA_FOV, state: c.state }));
+
+function CameraTile({ cam, selected, onSelect, threshold }: { cam: CameraView; selected: boolean; onSelect: () => void; threshold: number }) {
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "group text-left outline-none focus-visible:ring-2 focus-visible:ring-suspect",
-        "overflow-hidden rounded-sm bg-card ring-1 transition-[box-shadow]",
+        "group overflow-hidden rounded-sm bg-card text-left outline-none ring-1 transition-[box-shadow] focus-visible:ring-2 focus-visible:ring-suspect",
         selected ? "ring-paper/70" : cam.state === "clear" ? "ring-border" : STATE_TONE[cam.state].ring,
       )}
     >
       <div className="relative">
-        <CameraFrame scene={cam.scene} plume={cam.plume} label={`${cam.name} camera frame`} />
+        <RealFrame frame={cam.frame} showTiles={cam.state !== "clear"} subtle threshold={threshold} alt={`${cam.id} at ${takenAt(cam.frame.taken)}`} />
         <StateChip state={cam.state} className="absolute left-2 top-2" />
-        <span className="absolute right-2 top-2 rounded-full bg-ridge/70 px-2 py-0.5 text-xs text-contour">
-          {cam.frameAgeSec} s
+        <span className="absolute right-2 top-2 rounded-full bg-ridge/75 px-2 py-0.5 text-xs text-paper backdrop-blur-sm">
+          {takenAt(cam.frame.taken)}
         </span>
+        {cam.alerting && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-suspect" aria-hidden />}
       </div>
       <div className="flex items-center gap-3 px-3 py-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-paper">{cam.name}</p>
-          <p className="text-xs text-contour">Facing {compass(cam.azimuth)}</p>
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium text-paper">
+            {cam.id}
+            {cam.unseenSite && (
+              <Tooltip>
+                <TooltipTrigger render={<span className="inline-flex text-contour" />}>
+                  <EyeOff className="size-3.5" aria-label="Site the model never trained on" />
+                </TooltipTrigger>
+                <TooltipContent>The model never saw this site while training</TooltipContent>
+              </Tooltip>
+            )}
+          </p>
+          <p className="truncate text-xs text-contour">
+            {cam.siteName}, facing {compass(cam.heading)}
+          </p>
         </div>
-        <ScoreSpark values={cam.scoreHistory} className="hidden sm:block" />
-        <span className={cn("w-10 text-right font-heading text-xl font-semibold", STATE_TONE[cam.state].text)}>
-          {pct(cam.score)}
-        </span>
+        <ScoreSpark values={cam.history} threshold={threshold} className="hidden sm:block" />
+        <span className={cn("w-11 text-right font-heading text-xl font-semibold", STATE_TONE[cam.state].text)}>{pct(cam.score)}</span>
       </div>
     </button>
   );
 }
 
-function AlertCard({ alert }: { alert: Alert }) {
-  const cams = alert.cameraIds.map(cameraById).filter(Boolean) as Camera[];
-  const lead = cams[0];
+function AlertCard({ alert, cameras }: { alert: PlumeAlert; cameras: CameraView[] }) {
+  const lead = cameras.find((c) => c.id === alert.cameraIds[0]);
+  const reviewed = alert.verdict !== null;
   return (
-    <article className="animate-alert rounded-xl bg-card p-4 ring-1 ring-suspect/40">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-heading text-xl font-semibold text-paper">
-          {alert.cameraIds.length > 1 ? `Smoke seen by ${alert.cameraIds.length} cameras` : "Possible smoke"}
-        </h3>
-        <span className="text-xs text-contour">{ago(alert.firstAlertMinAgo)}</span>
-      </div>
-      {lead && (
-        <div className="mt-3 overflow-hidden rounded-sm">
-          <CameraFrame scene={lead.scene} plume={lead.plume} label={`${lead.name} at the time of the alert`} />
+    <Card className={cn("gap-3 py-4", !reviewed && "animate-alert ring-suspect/40")}>
+      <CardHeader className="px-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <CardTitle className="font-heading text-xl font-semibold text-paper">
+            {alert.cameraIds.length > 1 ? `Smoke seen by ${alert.cameraIds.length} cameras` : "Possible smoke"}
+          </CardTitle>
+          <span className="text-xs text-contour">{alert.id}</span>
         </div>
-      )}
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <div>
-          <dt className="text-contour">Peak score</dt>
-          <dd className="font-heading text-lg font-semibold text-suspect">{pct(alert.peakScore)}</dd>
-        </div>
-        <div>
-          <dt className="text-contour">Cameras</dt>
-          <dd className="text-paper">{cams.map((c) => c.station).join(", ")}</dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-contour">Location</dt>
-          <dd className="text-paper">
-            {alert.location ? coords(alert.location.lat, alert.location.lon) : "Needs a second camera to locate"}
-          </dd>
-        </div>
-      </dl>
-      <Button className="mt-4 w-full bg-suspect text-ridge hover:bg-suspect/85" render={<Link href={`/alerts?id=${alert.id}`} />}>
-        Review alert
-      </Button>
-    </article>
+      </CardHeader>
+      <CardContent className="space-y-3 px-4">
+        {lead && <RealFrame frame={lead.frame} showTiles subtle alt={`${lead.id} now`} className="rounded-sm" />}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <div>
+            <dt className="text-contour">Peak score</dt>
+            <dd className="font-heading text-lg font-semibold text-suspect">{pct(alert.peakScore)}</dd>
+          </div>
+          <div>
+            <dt className="text-contour">Cameras</dt>
+            <dd className="text-paper">{alert.cameraIds.join(", ")}</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-contour">Location</dt>
+            <dd className="text-paper">{alert.location ? coords(alert.location.lat, alert.location.lon) : "Needs a second tower to locate"}</dd>
+          </div>
+        </dl>
+        {reviewed ? (
+          <Badge variant="secondary" className={alert.verdict?.status === "confirmed" ? "text-fire" : "text-contour"}>
+            {alert.verdict?.status === "confirmed" ? "Confirmed fire" : `Not a fire${alert.verdict?.reason ? `: ${alert.verdict.reason.toLowerCase()}` : ""}`}
+          </Badge>
+        ) : (
+          <Button className="w-full bg-suspect text-ridge hover:bg-suspect/85" render={<Link href={`/alerts?id=${alert.id}`} />}>
+            Review alert
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 export function WatchConsole() {
-  const [selectedId, setSelectedId] = useState(DEMO_CAMERAS[0].id);
+  const r = useReplay();
+  const [selectedId, setSelectedId] = useState(r.cameras[0]?.id);
   const [zoomToAlert, setZoomToAlert] = useState(true);
-  const open = DEMO_ALERTS.filter((a) => a.status === "needs_review");
-  const located = open.find((a) => a.location);
-  const selected = DEMO_CAMERAS.find((c) => c.id === selectedId);
+  const located = r.alerts.find((a) => a.location) ?? r.alerts[0];
+  const smokeNow = r.cameras.filter((c) => c.state !== "clear").length;
+  const selected = r.cameras.find((c) => c.id === selectedId);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-6">
         <header>
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-paper">
-            Watching {DEMO_CAMERAS.length} cameras
-          </h1>
+          <h1 className="font-heading text-4xl font-semibold tracking-tight text-paper">Watching {r.cameras.length} cameras</h1>
           <p className="mt-1 text-contour">
-            {open.length === 0
-              ? "No smoke in view. Frames arrive about once a minute."
-              : `${open.length} ${open.length === 1 ? "alert needs" : "alerts need"} review. Frames arrive about once a minute.`}
+            {smokeNow === 0 ? "No smoke in view." : `Smoke in view on ${smokeNow} ${smokeNow === 1 ? "camera" : "cameras"}.`}{" "}
+            Alpes-Maritimes towers, real frames from 8 January 2024.
           </p>
         </header>
 
         <section aria-label="Camera wall" className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-          {DEMO_CAMERAS.map((cam) => (
-            <CameraTile key={cam.id} cam={cam} selected={cam.id === selectedId} onSelect={() => setSelectedId(cam.id)} />
+          {r.cameras.map((cam) => (
+            <CameraTile key={cam.id} cam={cam} selected={cam.id === selectedId} onSelect={() => setSelectedId(cam.id)} threshold={r.threshold} />
           ))}
         </section>
 
         <section aria-labelledby="finder-title" className="rounded-xl bg-card bg-contours p-5 ring-1 ring-border">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="finder-title" className="font-heading text-2xl font-semibold text-paper">
-              Fire finder
-            </h2>
+            <h2 id="finder-title" className="font-heading text-2xl font-semibold text-paper">Fire finder</h2>
             {located && (
               <Button variant="outline" size="sm" onClick={() => setZoomToAlert((z) => !z)} aria-pressed={!zoomToAlert}>
-                {zoomToAlert ? "Show all cameras" : `Zoom to alert ${located.id}`}
+                {zoomToAlert ? "Show all towers" : `Zoom to ${located.id}`}
               </Button>
             )}
           </div>
           <p className="mt-1 text-sm text-contour">
             {located?.location
               ? `Bearings from ${located.cameraIds.length} cameras cross at ${coords(located.location.lat, located.location.lon)}.`
-              : "Bearings appear when a camera sees smoke."}
+              : located
+                ? "One tower sees this plume. A second tower is needed to place it."
+                : "Bearings appear when a camera sees smoke."}
           </p>
-          <FireFinder
-            cameras={DEMO_CAMERAS}
-            alert={located}
-            focus={zoomToAlert}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            className="mt-2"
-          />
+          <FireFinder cameras={toFinder(r.cameras)} alert={located} focus={zoomToAlert} selectedId={selectedId} onSelect={setSelectedId} className="mt-2" />
           {selected && (
             <p className="text-sm text-contour">
-              Selected: <span className="text-paper">{selected.name}</span>, facing {compass(selected.azimuth)} with a{" "}
-              {selected.fov}° view.
+              Selected: <span className="text-paper">{selected.id}</span> on {selected.siteName}, facing {compass(selected.heading)}.
             </p>
           )}
         </section>
       </div>
 
       <aside aria-labelledby="queue-title" className="space-y-4">
-        <h2 id="queue-title" className="font-heading text-2xl font-semibold text-paper">
-          Needs review
-        </h2>
-        {open.length === 0 ? (
-          <p className="rounded-xl bg-card p-4 text-sm text-contour ring-1 ring-border">
-            Nothing to review. New alerts appear here first.
-          </p>
+        <div className="flex items-baseline justify-between">
+          <h2 id="queue-title" className="font-heading text-2xl font-semibold text-paper">Needs review</h2>
+          {r.needsReview > 0 && <Badge className="bg-suspect text-ridge">{r.needsReview}</Badge>}
+        </div>
+        {r.alerts.length === 0 ? (
+          <Card className="bg-contours py-5">
+            <CardContent className="space-y-3 px-4">
+              <p className="text-paper">No alerts yet.</p>
+              <p className="text-sm text-contour">
+                An alert is raised when a camera&apos;s smoke score passes {pct(r.threshold)} in 2 of 3 frames in a row.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => replay.seek(3)}>
+                Jump to the first alert
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          open.map((a) => <AlertCard key={a.id} alert={a} />)
+          r.alerts.map((a) => <AlertCard key={a.id} alert={a} cameras={r.cameras} />)
         )}
       </aside>
     </div>

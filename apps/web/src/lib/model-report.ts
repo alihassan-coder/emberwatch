@@ -15,16 +15,17 @@ export type Metric = {
 };
 
 export const MODEL_REPORT = {
-  model: "E1 tile classifier (EfficientNet-B0)",
-  status: "Training on a Kaggle T4 GPU",
+  model: "E1 tile classifier (EfficientNet-B0), version 18c4671",
+  status: "Trained for 29 minutes on a Kaggle T4 GPU",
   metrics: [
     {
       name: "Frames judged correctly",
-      explain: "F1 score on 2,070 frames from 7 camera sites the model never trained on.",
+      explain:
+        "F1 on 2,070 frames from 7 camera sites the model never trained on. Precision 95%: of the frames it flags, 95% really show smoke. Recall 91%: it flags 91% of smoke frames.",
       target: 0.82,
       better: "higher",
       unit: "%",
-      value: null,
+      value: 0.932,
       reference: "SmokeyNet 82.6%",
     },
     {
@@ -55,11 +56,11 @@ export const MODEL_REPORT = {
     },
     {
       name: "Time per frame",
-      explain: "Model time for one 1280×720 frame on a 4-core laptop CPU, with no GPU.",
+      explain: "Model time for one 1280×720 frame (24 tiles) on 4 CPU threads, with no GPU.",
       target: 1000,
       better: "lower",
       unit: "ms",
-      value: 650,
+      value: 262,
     },
   ] satisfies Metric[],
   data: [
@@ -74,5 +75,6 @@ export const MODEL_REPORT = {
     "Monochrome and older cameras are tested separately and are not trained on yet.",
     "Very distant plumes: 5% of smoke boxes are under 6 pixels wide at 640 px.",
     "Trained on French and Chilean cameras; the California fire test measures how well that carries over.",
+    "The frame threshold picked for the best F1 (23%) is trigger-happy for alerts, so alerts use a separate 50% threshold.",
   ],
 };

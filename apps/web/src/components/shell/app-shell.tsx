@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { BellRing, Cpu, ScanSearch, TowerControl } from "lucide-react";
 import { cn } from "cn";
 import { getHealth, type Health } from "@/lib/api";
-import { DEMO_ALERTS } from "@/lib/demo-data";
+import { ReplayControls } from "@/components/replay/replay-controls";
+import { useReplay } from "@/lib/replay/store";
 
 const NAV = [
   { href: "/", label: "Watch", icon: TowerControl },
@@ -30,20 +31,6 @@ function Mark() {
       <circle cx="16" cy="16" r="2" fill="var(--suspect)" />
     </svg>
   );
-}
-
-// The clock is an external source that ticks every second. useSyncExternalStore
-// reads it without setState-in-effect, and renders a placeholder on the server
-// (the prerendered page can't know the viewer's time).
-const subscribeToSeconds = (onTick: () => void) => {
-  const timer = setInterval(onTick, 1000);
-  return () => clearInterval(timer);
-};
-const readTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-function Clock() {
-  const time = useSyncExternalStore(subscribeToSeconds, readTime, () => "--:--:--");
-  return <time className="whitespace-nowrap text-sm text-paper tabular-nums">{time}</time>;
 }
 
 function ApiStatus() {
@@ -74,7 +61,7 @@ function ApiStatus() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const open = DEMO_ALERTS.filter((a) => a.status === "needs_review").length;
+  const open = useReplay().needsReview;
 
   return (
     <div className="flex min-h-dvh">
@@ -109,12 +96,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 items-center gap-4 border-b border-border px-4 sm:gap-6 sm:px-6">
-          <span className="whitespace-nowrap rounded-full border border-suspect/40 px-2.5 py-0.5 text-xs text-suspect">Replay demo</span>
-          <span className="hidden text-sm text-contour sm:inline">San Diego County watch area</span>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-border bg-background/90 px-4 backdrop-blur sm:gap-6 sm:px-6">
+          <ReplayControls />
+          <span className="hidden whitespace-nowrap rounded-full border border-suspect/40 px-2.5 py-0.5 text-xs text-suspect xl:inline">
+            Replay of real frames
+          </span>
           <div className="ml-auto flex items-center gap-4 sm:gap-6">
             <ApiStatus />
-            <Clock />
           </div>
         </header>
         <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>

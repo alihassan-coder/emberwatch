@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/shell/app-shell";
+import { AlertAnnouncer } from "@/components/replay/alert-announcer";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-// Barlow: modelled on California highway signage, the same region as the HPWREN cameras.
+// Barlow: modelled on road signage. Compact, legible numbers for live readouts.
 const barlow = Barlow({
   variable: "--font-barlow",
   subsets: ["latin"],
@@ -28,6 +30,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <TooltipProvider>
           <AppShell>{children}</AppShell>
+          <AlertAnnouncer />
+          <Toaster position="bottom-right" />
         </TooltipProvider>
       </body>
     </html>
