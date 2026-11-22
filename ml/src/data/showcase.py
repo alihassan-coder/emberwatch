@@ -108,19 +108,19 @@ def load_v1_images(rows: pd.DataFrame) -> dict[str, bytes]:
     return found
 
 
-def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path) -> dict:
+def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: str | None = None, lead_in: int = CLEAR_LEAD_IN) -> dict:
     # Only cameras with smoke-free frames qualify: the video must open before
     # the smoke, so viewers see the moment it appears (cabanelle-327, the
     # first pick, has none and the video started mid-fire).
     test = v2[v2["split"] == "test"]
     clear_counts = test[~test["has_smoke"]].groupby("camera").size()
-    test_cams = set(clear_counts[clear_counts >= CLEAR_LEAD_IN].index)
+    test_cams = {camera} if camera else set(clear_counts[clear_counts >= lead_in].index)
     seq = longest_sequence(v1_frames(test_cams))
     cam = seq["camera"].iloc[0]
     images = load_v1_images(seq)
 
     # Lead-in: smoke-free frames of the same camera, from v2.0's false-alarm set.
-    lead = v2[(v2["camera"] == cam) & ~v2["has_smoke"]].sort_values("date").tail(CLEAR_LEAD_IN)
+    lead = v2[(v2["camera"] == cam) & ~v2["has_smoke"]].sort_values("date").tail(lead_in)
     frames_dir = data_dir() / "video_frames"
     shutil.rmtree(frames_dir, ignore_errors=True)
     frames_dir.mkdir(parents=True)
@@ -201,6 +201,13 @@ def build_gallery(out: Path, scorer, v2: pd.DataFrame, images: Path) -> dict:
 
 
 def main() -> None:
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--camera", help="build the video from this camera (default: longest test-site sequence)")
+    ap.add_argument("--lead-in", type=int, default=CLEAR_LEAD_IN, help="smoke-free frames before the smoke")
+    ap.add_argument("--video-only", action="store_true")
+    args = ap.parse_args()
     scorer = load_scorer()
     if scorer is None:
         raise SystemExit("attach a trained model run (e.g. --source emberwatch-e1-tiles)")
@@ -211,8 +218,9 @@ def main() -> None:
 
     out = output_dir() / "showcase"
     out.mkdir(parents=True, exist_ok=True)
-    build_gallery(out, scorer, v2, images)       # cheap first
-    build_video(out, scorer, v2, images)         # needs the 3.3 GB v1.0 download
+    if not args.video_only:
+        build_gallery(out, scorer, v2, images)   # cheap first
+    build_video(out, scorer, v2, images, args.camera, args.lead_in)  # needs the 3.3 GB v1.0 download
     (out / "ATTRIBUTION.md").write_text(ATTRIBUTION.replace("v2.0 (", "v1.0 and v2.0 ("))
     (out / "meta.json").write_text(json.dumps({"git_sha": git_sha(), "model": scorer[0]["version"]}, indent=1))
 
