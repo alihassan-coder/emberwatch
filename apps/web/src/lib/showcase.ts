@@ -48,7 +48,9 @@ export function videoMoments(threshold: number) {
   const firstSmoke = frames.findIndex((f) => f.smoke);
   let alertAt = -1;
   for (let i = 0; i < frames.length && alertAt < 0; i++) {
-    const window = frames.slice(Math.max(0, i - RULE.n + 1), i + 1);
+    // The lead-in frames come from other days, so the rule never mixes them
+    // with frames of the fire itself: only consecutive frames count.
+    const window = frames.slice(Math.max(0, i - RULE.n + 1), i + 1).filter((f) => f.phase === frames[i].phase);
     if (window.filter((f) => f.score >= threshold).length >= RULE.k) alertAt = i;
   }
   const realMinutes = (from: number, to: number) => ((to - from) * VIDEO.seconds_per_frame_real) / 60;

@@ -20,4 +20,10 @@ export const CAPTIONS: Record<string, string> = {
   "gallery/caught/05.jpg": "Smoke rising far out over a pine forest",
   "gallery/caught/06.jpg": "Smoke deep in a mountain range",
   "gallery/caught/07.jpg": "Smoke beyond a ridge under heavy cloud",
+
+  // Where it misses: the faintest plumes, a few pixels wide
+  "gallery/missed/00.jpg": "A faint wisp on the horizon beyond a town",
+  "gallery/missed/01.jpg": "A speck of smoke far down the valley, seen through the tower's struts",
+  "gallery/missed/02.jpg": "A faint wisp at dusk, beyond a town",
+  "gallery/missed/03.jpg": "Thin smoke low in the valleys at evening",
 };
