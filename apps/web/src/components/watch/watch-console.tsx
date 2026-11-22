@@ -14,6 +14,7 @@ import { ScoreSpark } from "./score-spark";
 import { StateChip } from "./state-chip";
 import { CAMERA_FOV, type CameraView, type PlumeAlert } from "@/lib/replay/engine";
 import { replay, useReplay } from "@/lib/replay/store";
+import { ReplayControls } from "@/components/replay/replay-controls";
 import { STATE_TONE, compass, coords, pct, takenAt } from "@/lib/format";
 
 export const toFinder = (cams: CameraView[]): FinderCamera[] =>
@@ -116,11 +117,14 @@ export function WatchConsole() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-6">
-        <header>
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-paper">Watching {r.cameras.length} cameras</h1>
-          <p className="mt-1 text-contour">
-            {smokeNow === 0 ? "No smoke in view." : `Smoke in view on ${smokeNow} ${smokeNow === 1 ? "camera" : "cameras"}.`}{" "}
-            Alpes-Maritimes towers, real frames from 8 January 2024.
+        <header className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight">Cameras</h1>
+            <ReplayControls />
+          </div>
+          <p className="text-muted-foreground">
+            Six real tower cameras in the Alpes-Maritimes, replaying 8 January 2024.{" "}
+            {smokeNow === 0 ? "No smoke in view yet." : `Smoke in view on ${smokeNow} ${smokeNow === 1 ? "camera" : "cameras"}.`}
           </p>
         </header>
 

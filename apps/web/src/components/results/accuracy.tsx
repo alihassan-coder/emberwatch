@@ -1,8 +1,5 @@
-import type { Metadata } from "next";
 import { cn } from "cn";
 import { MODEL_REPORT, type Metric } from "@/lib/model-report";
-
-export const metadata: Metadata = { title: "Model" };
 
 function show(value: number, unit: Metric["unit"]) {
   if (unit === "%") return `${Math.round(value * 100)}%`;
@@ -31,7 +28,7 @@ function MetricRow({ m }: { m: Metric }) {
               meets === null ? "text-xl text-contour" : meets ? "text-4xl text-clear" : "text-4xl text-suspect",
             )}
           >
-            {m.value === null ? "Training now" : show(m.value, m.unit)}
+            {m.value === null ? "Being measured" : show(m.value, m.unit)}
           </span>
           <span className="text-right text-sm text-contour">
             Target {m.better === "higher" ? "at least" : "at most"} {show(m.target, m.unit)}
@@ -54,13 +51,12 @@ function MetricRow({ m }: { m: Metric }) {
   );
 }
 
-export default function ModelPage() {
+export function Accuracy() {
   const r = MODEL_REPORT;
   return (
     <div className="max-w-5xl space-y-10">
       <header>
-        <h1 className="font-heading text-4xl font-semibold tracking-tight text-paper">How the model is doing</h1>
-        <p className="mt-1 text-contour">
+        <p className="text-muted-foreground">
           {r.model}. {r.status}. Every number here is measured on cameras and fires the model never saw while
           training.
         </p>

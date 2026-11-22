@@ -234,8 +234,8 @@ export function AlertReview() {
           <Button onClick={() => replay.seek(3)}>
             Jump to the first alert
           </Button>
-          <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
-            Back to Watch
+          <Button variant="outline" nativeButton={false} render={<Link href="/cameras" />}>
+            Open the cameras
           </Button>
         </div>
       </div>

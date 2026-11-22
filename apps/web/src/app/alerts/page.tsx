@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AlertReview } from "@/components/alerts/alert-review";
+import { AlertAnnouncer } from "@/components/replay/alert-announcer";
 
 export const metadata: Metadata = { title: "Alerts" };
 
@@ -9,6 +10,7 @@ export default function AlertsPage() {
   return (
     <Suspense fallback={<p className="text-contour">Loading alerts…</p>}>
       <AlertReview />
+      <AlertAnnouncer />
     </Suspense>
   );
 }

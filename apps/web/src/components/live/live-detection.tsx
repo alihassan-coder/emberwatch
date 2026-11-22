@@ -5,16 +5,18 @@ import { BellRing, Mail, MessageSquareText, Pause, Play, RotateCcw, Webhook } fr
 import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StateChip } from "@/components/watch/state-chip";
 import { ALERT_THRESHOLD } from "@/lib/replay/engine";
 import { VIDEO, clockOf, videoMoments } from "@/lib/showcase";
-import { STATE_TONE, compass, pct } from "@/lib/format";
+import { STATE_TONE, pct } from "@/lib/format";
 
 const [W, H] = VIDEO.frame_size;
 const moments = videoMoments(ALERT_THRESHOLD);
 
-/** The overlays drawn on top of the playing video: hot-tile outlines and the person's smoke box. */
-function Overlay({ index, showBox }: { index: number; showBox: boolean }) {
+/** Outlines on the parts of the photo where the model sees smoke. */
+function Overlay({ index }: { index: number }) {
   const f = VIDEO.frames[index];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
@@ -22,128 +24,56 @@ function Overlay({ index, showBox }: { index: number; showBox: boolean }) {
         .filter((t) => t.p >= ALERT_THRESHOLD)
         .map((t, i) => (
           <rect key={i} x={t.x + 3} y={t.y + 3} width={t.size - 6} height={t.size - 6} rx="4"
-            fill={t.p >= 0.85 ? "rgb(229 83 61 / 0.12)" : "rgb(240 166 58 / 0.1)"} stroke={t.p >= 0.85 ? "var(--fire)" : "var(--suspect)"} strokeWidth="3" />
-        ))}
-      {showBox &&
-        f.boxes.map(([y1, x1, y2, x2], i) => (
-          <rect key={`b${i}`} x={x1 - 5} y={y1 - 5} width={x2 - x1 + 10} height={y2 - y1 + 10} fill="none" stroke="var(--paper)" strokeWidth="2" strokeDasharray="5 4" />
+            fill="color-mix(in oklch, var(--fire) 10%, transparent)" stroke="var(--fire)" strokeWidth="3" />
         ))}
     </svg>
   );
 }
 
-/** Score of every frame as a bar chart, with the threshold, the two key moments and the playhead. */
-function ScoreTimeline({ index, onSeek }: { index: number; onSeek: (i: number) => void }) {
+/** One bar per photo: taller means the model is more sure there is smoke. */
+function Timeline({ index, onSeek }: { index: number; onSeek: (i: number) => void }) {
   const n = VIDEO.frames.length;
-  const x = (i: number) => (i / (n - 1)) * 100;
+  const left = (i: number) => `${(i / (n - 1)) * 100}%`;
   return (
-    <div className="space-y-2">
-      <div className="relative h-24 rounded-sm bg-card ring-1 ring-border">
-        <div className="absolute inset-x-0 border-t border-dashed border-contour/40" style={{ bottom: `${ALERT_THRESHOLD * 100}%` }} aria-hidden />
-        <div className="absolute inset-0 flex items-end gap-px px-px">
+    <div>
+      <div className="relative h-16">
+        <div className="absolute inset-x-0 border-t border-dashed border-muted-foreground/40" style={{ bottom: `${ALERT_THRESHOLD * 100}%` }} aria-hidden />
+        <div className="absolute inset-0 flex items-end gap-px">
           {VIDEO.frames.map((f) => (
-            <button
-              key={f.i}
-              type="button"
-              onClick={() => onSeek(f.i)}
-              aria-label={`${clockOf(f.taken)}, score ${pct(f.score)}`}
-              className="group relative h-full flex-1 outline-none focus-visible:ring-2 focus-visible:ring-suspect"
-            >
-              <span
-                className={cn(
-                  "absolute inset-x-0 bottom-0 rounded-t-[1px] transition-opacity",
-                  f.score >= 0.85 ? "bg-fire" : f.score >= ALERT_THRESHOLD ? "bg-suspect" : "bg-clear/50",
-                  f.i > index && "opacity-35",
-                )}
-                style={{ height: `${Math.max(3, f.score * 100)}%` }}
-              />
+            <button key={f.i} type="button" onClick={() => onSeek(f.i)} aria-label={`Photo at ${clockOf(f.taken)}: ${pct(f.score)} smoke`}
+              className="relative h-full flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <span className={cn("absolute inset-x-0 bottom-0 rounded-t-[1px]", f.score >= ALERT_THRESHOLD ? "bg-fire" : "bg-clear/60", f.i > index && "opacity-30")}
+                style={{ height: `${Math.max(4, f.score * 100)}%` }} />
             </button>
           ))}
         </div>
-        <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-paper" style={{ left: `${x(index)}%` }} aria-hidden />
+        <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-foreground" style={{ left: left(index) }} aria-hidden />
       </div>
-      <div className="relative h-10 text-xs">
-        {moments.firstSmoke >= 0 && (
-          <span className="absolute whitespace-nowrap text-paper" style={{ left: `${x(moments.firstSmoke)}%`, transform: `translateX(-${Math.min(50, x(moments.firstSmoke))}%)` }}>
-            <span className="mx-auto mb-0.5 block h-2 w-px bg-paper" />
-            Smoke first visible
-          </span>
-        )}
+      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>Each bar is one photo. Taller means more likely smoke. Click a bar to jump there.</span>
         {moments.alertAt >= 0 && (
-          <span className="absolute translate-y-4 whitespace-nowrap font-medium text-suspect" style={{ left: `${x(moments.alertAt)}%` }}>
-            <span className="mb-0.5 block h-2 w-px bg-suspect" />
-            Alert raised
-          </span>
+          <span className="shrink-0 text-foreground">Alert at {clockOf(VIDEO.frames[moments.alertAt].taken)}</span>
         )}
       </div>
     </div>
   );
 }
 
-const DISPATCH = [
-  { icon: MessageSquareText, who: "Duty officer", how: "SMS", delay: 2 },
-  { icon: Mail, who: "Fire station 06", how: "Email with frames and map", delay: 4 },
-  { icon: Webhook, who: "Dispatch system", how: "Webhook (JSON)", delay: 3 },
+const NOTIFY = [
+  { icon: MessageSquareText, who: "Duty officer", how: "text message" },
+  { icon: Mail, who: "Fire station", how: "email with photos and map" },
+  { icon: Webhook, who: "Dispatch system", how: "automatic message" },
 ];
-
-function AlertPipeline({ index }: { index: number }) {
-  const raised = moments.alertAt >= 0 && index >= moments.alertAt;
-  const f = VIDEO.frames[index];
-  const alertClock = moments.alertAt >= 0 ? clockOf(VIDEO.frames[moments.alertAt].taken) : null;
-  const steps = [
-    { label: "Frame scored", done: true, detail: `${pct(f.score)} smoke, ${f.tiles.length} tiles checked` },
-    { label: `Score above ${pct(ALERT_THRESHOLD)} in 2 of 3 frames`, done: raised, detail: raised ? "Rule passed" : "Waiting" },
-    { label: "Alert raised", done: raised, detail: raised ? `At ${alertClock}` : "Not yet" },
-  ];
-  return (
-    <div className="space-y-5">
-      <ol className="space-y-3">
-        {steps.map((s, i) => (
-          <li key={s.label} className="flex gap-3">
-            <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold", s.done ? "bg-primary text-primary-foreground" : "bg-muted text-contour")}>
-              {i + 1}
-            </span>
-            <div>
-              <p className={cn("text-sm", s.done ? "text-paper" : "text-contour")}>{s.label}</p>
-              <p className="text-xs text-contour">{s.detail}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <div className={cn("rounded-xl p-4 ring-1 transition-colors", raised ? "bg-suspect/10 ring-suspect/50" : "bg-card ring-border")}>
-        <div className="flex items-center justify-between gap-2">
-          <p className="flex items-center gap-2 font-heading text-xl font-semibold text-paper">
-            <BellRing className={cn("size-5", raised ? "text-suspect" : "text-contour")} aria-hidden />
-            {raised ? "Alert sent" : "No alert yet"}
-          </p>
-          <Badge variant="outline" className="text-contour">Simulated</Badge>
-        </div>
-        <ul className="mt-3 space-y-2">
-          {DISPATCH.map(({ icon: Icon, who, how, delay }) => (
-            <li key={who} className={cn("flex items-center gap-3 text-sm transition-opacity", raised ? "opacity-100" : "opacity-40")}>
-              <Icon className="size-4 shrink-0 text-contour" aria-hidden />
-              <span className="flex-1 text-paper">
-                {who} <span className="text-contour">by {how.toLowerCase()}</span>
-              </span>
-              <span className="text-xs text-contour">{raised ? `+${delay} s` : "Queued"}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
 
 export function LiveDetection() {
   const video = useRef<HTMLVideoElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [showBox, setShowBox] = useState(false);
   const f = VIDEO.frames[index];
   const state = f.score >= 0.85 ? "fire" : f.score >= ALERT_THRESHOLD ? "suspect" : "clear";
+  const alerted = moments.alertAt >= 0 && index >= moments.alertAt;
 
-  // While playing, follow the video's clock frame by frame.
+  // While playing, follow the video's clock photo by photo.
   useEffect(() => {
     if (!playing) return;
     let raf = 0;
@@ -157,8 +87,7 @@ export function LiveDetection() {
   }, [playing]);
 
   const seek = (i: number) => {
-    const v = video.current;
-    if (v) v.currentTime = (i + 0.5) / VIDEO.fps;
+    if (video.current) video.current.currentTime = (i + 0.5) / VIDEO.fps;
     setIndex(i);
   };
   const toggle = () => {
@@ -169,65 +98,82 @@ export function LiveDetection() {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="min-w-0 space-y-4">
-        <div className="relative overflow-hidden rounded-sm bg-ridge ring-1 ring-border">
-          <video
-            ref={video}
-            src="/demo/showcase/video.mp4"
-            muted
-            playsInline
-            preload="auto"
-            className="block aspect-video w-full"
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onEnded={() => setPlaying(false)}
-            aria-label={`Time-lapse from camera ${VIDEO.camera}`}
-          />
-          <Overlay index={index} showBox={showBox} />
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-3">
+        <div className="relative overflow-hidden rounded-lg border bg-muted">
+          <video ref={video} src="/demo/showcase/video.mp4" muted playsInline preload="auto" className="block aspect-video w-full"
+            onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
+            aria-label={`Time-lapse from tower camera ${VIDEO.camera}`} />
+          <Overlay index={index} />
           <StateChip state={state} className="absolute left-3 top-3" />
-          <span className="absolute right-3 top-3 rounded-full bg-ridge/75 px-2.5 py-0.5 text-sm text-paper backdrop-blur-sm tabular-nums">
-            {clockOf(f.taken)}
-          </span>
-          <span className={cn("absolute bottom-3 left-3 rounded-lg bg-ridge/75 px-3 py-1 font-heading text-3xl font-semibold backdrop-blur-sm", STATE_TONE[state].text)}>
-            {pct(f.score)}
-          </span>
+          <span className="absolute right-3 top-3 rounded-md bg-background/80 px-2 py-0.5 text-sm tabular-nums backdrop-blur-sm">{clockOf(f.taken)}</span>
+          {!playing && index === 0 && (
+            <button type="button" onClick={toggle} className="absolute inset-0 grid place-items-center bg-black/10 outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Play the footage">
+              <span className="flex items-center gap-2 rounded-full bg-background px-5 py-3 text-sm font-medium shadow-sm">
+                <Play className="size-4" /> Play the footage
+              </span>
+            </button>
+          )}
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={toggle}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={toggle}>
             {playing ? <Pause /> : <Play />}
-            {playing ? "Pause" : index === 0 ? "Play the footage" : "Resume"}
+            {playing ? "Pause" : "Play"}
           </Button>
-          <Button variant="ghost" onClick={() => seek(0)}>
+          <Button variant="ghost" size="sm" onClick={() => seek(0)}>
             <RotateCcw />
             Start over
           </Button>
-          <Button variant="outline" onClick={() => setShowBox((s) => !s)} aria-pressed={showBox}>
-            {showBox ? "Hide the person's smoke box" : "Show the person's smoke box"}
-          </Button>
-          <span className="ml-auto text-sm text-contour">
-            1 second of video is about {Math.round((VIDEO.fps * VIDEO.seconds_per_frame_real) / 60)} minutes of real time
-          </span>
         </div>
-
-        <ScoreTimeline index={index} onSeek={seek} />
+        <Timeline index={index} onSeek={seek} />
       </div>
 
-      <aside className="space-y-6">
-        <div>
-          <p className="text-sm text-contour">Detected</p>
-          <p className="font-heading text-6xl font-semibold leading-none text-paper">
-            {moments.detectMinutes === null ? "n/a" : moments.detectMinutes < 1 ? "<1" : moments.detectMinutes.toFixed(0)}
-            <span className="ml-2 text-2xl text-contour">min</span>
-          </p>
-          <p className="mt-2 text-sm text-contour">
-            after smoke first became visible on {VIDEO.camera} ({VIDEO.site}, facing {compass(VIDEO.heading)}). A
-            camera site the model never saw while training.
-          </p>
-        </div>
-        <AlertPipeline index={index} />
-      </aside>
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Right now</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className={cn("text-5xl font-semibold tabular-nums", STATE_TONE[state].text)}>{pct(f.score)}</p>
+            <p className="text-sm text-muted-foreground">
+              <Tooltip>
+                <TooltipTrigger render={<span className="cursor-help underline decoration-dotted underline-offset-4" />}>
+                  Smoke score
+                </TooltipTrigger>
+                <TooltipContent>How sure the model is that this photo shows smoke. Above 50% counts.</TooltipContent>
+              </Tooltip>{" "}
+              for this photo
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={cn("transition-colors", alerted && "border-fire/50 bg-fire/5")}>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <BellRing className={cn("size-4", alerted ? "text-fire" : "text-muted-foreground")} />
+              {alerted ? "Alert sent" : "No alert yet"}
+            </CardTitle>
+            <Badge variant="outline" className="text-muted-foreground">Demo</Badge>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {alerted
+                ? `Smoke showed in 2 of the last 3 photos, ${moments.detectMinutes !== null && moments.detectMinutes < 1 ? "less than a minute" : `${moments.detectMinutes?.toFixed(0)} minutes`} after it first appeared.`
+                : "An alert goes out when smoke shows in 2 of the last 3 photos."}
+            </p>
+            <ul className="space-y-2">
+              {NOTIFY.map(({ icon: Icon, who, how }) => (
+                <li key={who} className={cn("flex items-center gap-3 text-sm transition-opacity", alerted ? "opacity-100" : "opacity-40")}>
+                  <Icon className="size-4 shrink-0 text-muted-foreground" />
+                  <span>
+                    {who} <span className="text-muted-foreground">by {how}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

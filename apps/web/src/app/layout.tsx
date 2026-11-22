@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppShell } from "@/components/shell/app-shell";
-import { AlertAnnouncer } from "@/components/replay/alert-announcer";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppHeader } from "@/components/shell/app-header";
+import { AppSidebar } from "@/components/shell/app-sidebar";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -20,8 +21,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) add attributes to <body> before React loads */}
       <body className="min-h-full" suppressHydrationWarning>
         <TooltipProvider>
-          <AppShell>{children}</AppShell>
-          <AlertAnnouncer />
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <AppHeader />
+              <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>
+            </SidebarInset>
+          </SidebarProvider>
           <Toaster position="bottom-right" />
         </TooltipProvider>
       </body>
