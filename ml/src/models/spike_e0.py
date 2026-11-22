@@ -35,6 +35,7 @@ from PIL import Image  # noqa: E402
 
 from src.common.env import data_dir, find_input, output_dir  # noqa: E402
 from src.common.shards import unpack  # noqa: E402
+from src.export.onnx_check import export_and_check  # noqa: E402
 
 # Pyro-SDIS frames are 1280x720 and the median smoke box is ~17 px wide at
 # 640 px, so detectors are tested near native resolution. 736 = 720 padded
@@ -159,11 +160,6 @@ CANDIDATES = [
 
 # ── Measurements ───────────────────────────────────────────────────────────
 
-def _flatten(out) -> list[np.ndarray]:
-    import keras
-    return [np.asarray(keras.ops.convert_to_numpy(t)) for t in keras.tree.flatten(out)]
-
-
 def train_speed(model, x, y, steps: int) -> dict:
     n = len(x)
     reps = int(np.ceil(steps * BATCH / n)) + 1
@@ -187,49 +183,6 @@ def train_speed(model, x, y, steps: int) -> dict:
         "train_steps": len(rest_x) // BATCH,
         "final_loss": float(hist.history["loss"][-1]),
     }
-
-
-def export_and_check(model, sample: np.ndarray, path: Path) -> dict:
-    import onnxruntime as ort
-
-    t0 = time.time()
-    model.export(str(path), format="onnx")
-    result = {"export_s": round(time.time() - t0, 1), "onnx_mb": round(path.stat().st_size / 1e6, 1)}
-
-    opts = ort.SessionOptions()
-    opts.intra_op_num_threads = 4  # the dev laptop has 4 cores
-    sess = ort.InferenceSession(str(path), opts, providers=["CPUExecutionProvider"])
-    inp = sess.get_inputs()[0]
-    result["onnx_input"] = {"name": inp.name, "shape": [str(d) for d in inp.shape]}
-    result["onnx_outputs"] = [{"name": o.name, "shape": [str(d) for d in o.shape]} for o in sess.get_outputs()]
-
-    batch = sample[:2]
-    keras_out = _flatten(model(batch, training=False))
-    onnx_out = sess.run(None, {inp.name: batch})
-    # Match outputs by shape (ordering can differ between keras and onnx).
-    diffs = []
-    remaining = list(onnx_out)
-    for k in keras_out:
-        match = next((i for i, o in enumerate(remaining) if o.shape == k.shape), None)
-        if match is None:
-            diffs.append(None)
-            continue
-        o = remaining.pop(match)
-        diffs.append(float(np.max(np.abs(o.astype(np.float64) - k.astype(np.float64)))))
-    result["parity_max_abs_diff"] = diffs
-    result["parity_ok"] = all(d is not None and d < 1e-3 for d in diffs) and len(diffs) > 0
-
-    one = sample[:1]
-    for _ in range(3):
-        sess.run(None, {inp.name: one})
-    times = []
-    for _ in range(15):
-        t0 = time.time()
-        sess.run(None, {inp.name: one})
-        times.append((time.time() - t0) * 1000)
-    result["cpu_ms_batch1_p50"] = round(float(np.median(times)), 1)
-    result["cpu_ms_batch1_p90"] = round(float(np.percentile(times, 90)), 1)
-    return result
 
 
 def run_candidate(name, builder, kind, det_x, det_y, tile_x, tile_y, steps, out: Path) -> dict:

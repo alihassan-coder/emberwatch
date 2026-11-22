@@ -29,6 +29,11 @@ def export_and_check(model, sample: np.ndarray, path: Path, latency_runs: int = 
     """
     import onnxruntime as ort
 
+    # Keras only exports a model that has been called directly (fit/predict
+    # don't count), and we need its outputs for the parity check anyway.
+    batch = sample[:2].astype(np.float32)
+    keras_outputs = _to_numpy_list(model(batch, training=False))
+
     started = time.time()
     model.export(str(path), format="onnx")
     report = {"export_s": round(time.time() - started, 1), "onnx_mb": round(path.stat().st_size / 1e6, 1)}
@@ -40,8 +45,6 @@ def export_and_check(model, sample: np.ndarray, path: Path, latency_runs: int = 
     report["onnx_input"] = {"name": onnx_input.name, "shape": [str(d) for d in onnx_input.shape]}
     report["onnx_outputs"] = [{"name": o.name, "shape": [str(d) for d in o.shape]} for o in session.get_outputs()]
 
-    batch = sample[:2].astype(np.float32)
-    keras_outputs = _to_numpy_list(model(batch, training=False))
     onnx_outputs = list(session.run(None, {onnx_input.name: batch}))
     # Output order can differ between Keras and ONNX, so pair them up by shape.
     diffs = []
