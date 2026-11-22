@@ -35,7 +35,10 @@ from PIL import Image  # noqa: E402
 
 from src.common.env import find_input, output_dir  # noqa: E402
 
-DET_SIZE = 640
+# Pyro-SDIS frames are 1280x720 and the median smoke box is ~17 px wide at
+# 640 px, so detectors are tested near native resolution. 736 = 720 padded
+# to a multiple of 32 (FPN strides). --size 640 gives the square baseline.
+DET_H, DET_W = 736, 1280
 TILE_SIZE = 224
 MAX_BOXES = 8
 BATCH = 4
@@ -43,13 +46,13 @@ BATCH = 4
 
 # ── Data: a small sample from the frozen train split ───────────────────────
 
-def letterbox(img: Image.Image, size: int) -> tuple[np.ndarray, float, int, int]:
-    """Resize the long side to `size`, pad to square. Returns array, scale, pad_y, pad_x."""
+def letterbox(img: Image.Image, out_h: int, out_w: int) -> tuple[np.ndarray, float, int, int]:
+    """Resize to fit (out_h, out_w) keeping aspect ratio, pad the rest. Returns array, scale, pad_y, pad_x."""
     w, h = img.size
-    scale = size / max(w, h)
+    scale = min(out_w / w, out_h / h)
     nw, nh = round(w * scale), round(h * scale)
-    canvas = np.full((size, size, 3), 114, dtype=np.uint8)
-    pad_y, pad_x = (size - nh) // 2, (size - nw) // 2
+    canvas = np.full((out_h, out_w, 3), 114, dtype=np.uint8)
+    pad_y, pad_x = (out_h - nh) // 2, (out_w - nw) // 2
     canvas[pad_y:pad_y + nh, pad_x:pad_x + nw] = np.asarray(img.convert("RGB").resize((nw, nh), Image.Resampling.BILINEAR))
     return canvas, scale, pad_y, pad_x
 
@@ -66,7 +69,7 @@ def load_detection_sample(n: int) -> tuple[np.ndarray, dict, list[np.ndarray]]:
     images, boxes, labels, crops = [], [], [], []
     for _, r in rows.iterrows():
         with Image.open(images_dir / r["image_name"]) as img:
-            arr, scale, py, px = letterbox(img, DET_SIZE)
+            arr, scale, py, px = letterbox(img, DET_H, DET_W)
             b = np.full((MAX_BOXES, 4), -1.0, dtype=np.float32)
             lab = np.full((MAX_BOXES,), -1, dtype=np.int32)
             for i, (y1, x1, y2, x2) in enumerate(list(r["boxes_yxyx_abs"])[:MAX_BOXES]):
@@ -90,10 +93,11 @@ def tiles_from(x: np.ndarray, y: dict) -> tuple[np.ndarray, np.ndarray]:
             cy, cx = int((y1 + y2) / 2), int((x1 + x2) / 2)
             label = 1
         else:
-            cy, cx = rng.integers(TILE_SIZE // 2, DET_SIZE - TILE_SIZE // 2, size=2)
+            cy = rng.integers(TILE_SIZE // 2, img.shape[0] - TILE_SIZE // 2)
+            cx = rng.integers(TILE_SIZE // 2, img.shape[1] - TILE_SIZE // 2)
             label = 0
-        top = int(np.clip(cy - TILE_SIZE // 2, 0, DET_SIZE - TILE_SIZE))
-        left = int(np.clip(cx - TILE_SIZE // 2, 0, DET_SIZE - TILE_SIZE))
+        top = int(np.clip(cy - TILE_SIZE // 2, 0, img.shape[0] - TILE_SIZE))
+        left = int(np.clip(cx - TILE_SIZE // 2, 0, img.shape[1] - TILE_SIZE))
         tiles.append(img[top:top + TILE_SIZE, left:left + TILE_SIZE]); labels.append(label)
     return np.stack(tiles).astype(np.float32), np.array(labels, dtype=np.int32)
 
@@ -257,7 +261,7 @@ def write_markdown(results: list[dict], env: dict, path: Path) -> None:
         "# E0 spike: model routes",
         "",
         f"GPU: {env.get('gpus')}, backend: {env.get('backend')}, keras {env.get('keras')}, "
-        f"keras_hub {env.get('keras_hub')}, jax {env.get('jax')}",
+        f"keras_hub {env.get('keras_hub')}, jax {env.get('jax')}, detector input {env.get('det_input')}",
         "",
         "| Model | Status | Params (M) | Compile (s) | Train img/s | ONNX MB | Parity max diff | CPU ms (p50) |",
         "|---|---|---|---|---|---|---|---|",
@@ -282,7 +286,12 @@ def main() -> None:
     ap.add_argument("--images", type=int, default=200)
     ap.add_argument("--steps", type=int, default=40)
     ap.add_argument("--only", nargs="*", help="run only these candidate names")
+    ap.add_argument("--size", choices=["native", "640"], default="native",
+                    help="detector input: native 1280x736 or square 640")
     args = ap.parse_args()
+    global DET_H, DET_W
+    if args.size == "640":
+        DET_H, DET_W = 640, 640
 
     import jax
     import keras
@@ -290,7 +299,7 @@ def main() -> None:
 
     out = output_dir() / "spike_e0"
     out.mkdir(parents=True, exist_ok=True)
-    env = {"backend": keras.backend.backend(), "keras": keras.__version__, "keras_hub": keras_hub.__version__,
+    env = {"det_input": f"{DET_W}x{DET_H}", "backend": keras.backend.backend(), "keras": keras.__version__, "keras_hub": keras_hub.__version__,
            "jax": jax.__version__, "gpus": [str(d) for d in jax.devices()]}
     print("env:", env, flush=True)
 
