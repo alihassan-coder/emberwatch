@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.165.0",
     "numpy>=2.5.5",
     "onnxruntime>=1.32.0",
+    "pillow>=13.0.0",
 ]
 
 [project.scripts]

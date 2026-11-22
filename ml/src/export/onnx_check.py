@@ -21,9 +21,29 @@ def _to_numpy_list(outputs) -> list[np.ndarray]:
     return [np.asarray(keras.ops.convert_to_numpy(t)) for t in keras.tree.flatten(outputs)]
 
 
+def _merge_external_data(path: Path) -> list[str]:
+    """Fold any side files (e.g. model.onnx.data) back into the .onnx file.
+
+    The exporter may write some weights to separate files. A model that is
+    one self-contained file can't be deployed half-copied. ONNX's 2 GB
+    single-file limit is far above our models.
+    """
+    import onnx
+
+    side_files = sorted(p for p in path.parent.glob(path.name + "*") if p != path)
+    if not side_files:
+        return []
+    proto = onnx.load(str(path), load_external_data=True)
+    onnx.save_model(proto, str(path), save_as_external_data=False)
+    for side in side_files:
+        side.unlink()
+    return [p.name for p in side_files]
+
+
 def export_and_check(model, sample: np.ndarray, path: Path, latency_runs: int = 15) -> dict:
     """Export `model` to `path` (.onnx), then compare Keras vs ONNX on `sample`.
 
+    The result is always a single self-contained .onnx file.
     Returns a dict with export time, file size, input/output signature,
     per-output max abs difference, parity_ok, and CPU latency (batch 1).
     """
@@ -36,7 +56,8 @@ def export_and_check(model, sample: np.ndarray, path: Path, latency_runs: int = 
 
     started = time.time()
     model.export(str(path), format="onnx")
-    report = {"export_s": round(time.time() - started, 1), "onnx_mb": round(path.stat().st_size / 1e6, 1)}
+    merged = _merge_external_data(path)
+    report = {"merged_external_data_files": merged, "export_s": round(time.time() - started, 1), "onnx_mb": round(path.stat().st_size / 1e6, 1)}
 
     options = ort.SessionOptions()
     options.intra_op_num_threads = 4

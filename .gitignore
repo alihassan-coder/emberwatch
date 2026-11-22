@@ -33,3 +33,6 @@ node_modules/
 
 # Kaggle run outputs (fetched results stay local; reports get copied to docs/)
 ml/artifacts/runs/
+
+# API model files (copied from ml/artifacts; never committed)
+apps/api/models/
