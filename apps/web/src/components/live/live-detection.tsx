@@ -40,7 +40,7 @@ function Timeline({ index, onSeek }: { index: number; onSeek: (i: number) => voi
         <div className="absolute inset-x-0 border-t border-dashed border-muted-foreground/40" style={{ bottom: `${ALERT_THRESHOLD * 100}%` }} aria-hidden />
         <div className="absolute inset-0 flex items-end gap-px">
           {VIDEO.frames.map((f) => (
-            <button key={f.i} type="button" onClick={() => onSeek(f.i)} aria-label={`Photo at ${clockOf(f.taken)}: ${pct(f.score)} smoke`}
+            <button key={f.i} type="button" onClick={() => onSeek(f.i)} aria-label={`${f.phase === "lead" ? "Earlier photo" : `Photo at ${clockOf(f.taken)}`}: ${pct(f.score)} smoke`}
               className="relative h-full flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span className={cn("absolute inset-x-0 bottom-0 rounded-t-[1px]", f.score >= ALERT_THRESHOLD ? "bg-fire" : "bg-clear/60", f.i > index && "opacity-30")}
                 style={{ height: `${Math.max(4, f.score * 100)}%` }} />
@@ -106,7 +106,10 @@ export function LiveDetection() {
             aria-label={`Time-lapse from tower camera ${VIDEO.camera}`} />
           <Overlay index={index} />
           <StateChip state={state} className="absolute left-3 top-3" />
-          <span className="absolute right-3 top-3 rounded-md bg-background/80 px-2 py-0.5 text-sm tabular-nums backdrop-blur-sm">{clockOf(f.taken)}</span>
+          <span className="absolute right-3 top-3 rounded-md bg-background/80 px-2 py-0.5 text-sm tabular-nums backdrop-blur-sm">
+            {/* lead-in photos are from other days: a clock time would jump backwards */}
+            {f.phase === "lead" ? "Earlier photo" : clockOf(f.taken)}
+          </span>
           {!playing && index === 0 && (
             <button type="button" onClick={toggle} className="absolute inset-0 grid place-items-center bg-black/10 outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Play the footage">
               <span className="flex items-center gap-2 rounded-full bg-background px-5 py-3 text-sm font-medium shadow-sm">
