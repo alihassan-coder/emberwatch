@@ -28,7 +28,7 @@ REPO_URL="https://github.com/alihassan-coder/emberwatch.git"
 ROOT="$(git rev-parse --show-toplevel)"
 # Kaggle CLI 2.2.5 imports `six` without declaring it.
 KAGGLE=(uvx --python 3.12 --with six kaggle@latest)
-DEFAULT_FETCH='\.(json|md|log|csv|txt|png)$'
+DEFAULT_FETCH='\.(json|md|csv|txt|png)$'
 POLL_SECONDS=180  # Kaggle rate-limits frequent polling
 
 die() { echo "error: $*" >&2; exit 1; }
@@ -49,11 +49,13 @@ fetch() {
   local n size
   n=$(find "$dest" -type f | wc -l); size=$(du -sh "$dest" | cut -f1)
   log "fetched $n file(s), $size total"
-  local logfile
-  logfile=$(find "$dest" -maxdepth 1 -name '*.log' | head -1)
-  if [[ -n "$logfile" ]]; then
+  # The log comes from `kernels logs` (one API call) rather than the output
+  # listing, so it arrives even when outputs are large.
+  local logfile="$dest/$slug.log"
+  "${KAGGLE[@]}" kernels logs "$KAGGLE_USER/$slug" > "$logfile" 2>/dev/null || true
+  if [[ -s "$logfile" ]]; then
     log "last lines of the Kaggle log:"
-    # Kaggle logs are JSON lines: [{"stream_name":..,"data":..}, ...]
+    # Kaggle logs are JSON: [{"stream_name": .., "data": ..}, ...]
     python3 - "$logfile" <<'PY' || tail -n 30 "$logfile"
 import json, sys
 raw = open(sys.argv[1]).read()
@@ -62,7 +64,9 @@ try:
     text = "".join(e.get("data", "") for e in entries)
 except Exception:
     text = raw
-print("\n".join(text.rstrip().splitlines()[-30:]))
+noise = ("SyntaxWarning", "cells[i][c]", "text = re.sub", "NbConvertApp")
+lines = [l for l in text.rstrip().splitlines() if not any(n in l for n in noise)]
+print("\n".join(lines[-30:]))
 PY
   fi
 }

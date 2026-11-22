@@ -33,7 +33,8 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from src.common.env import find_input, output_dir  # noqa: E402
+from src.common.env import data_dir, find_input, output_dir  # noqa: E402
+from src.common.shards import unpack  # noqa: E402
 
 # Pyro-SDIS frames are 1280x720 and the median smoke box is ~17 px wide at
 # 640 px, so detectors are tested near native resolution. 736 = 720 padded
@@ -59,7 +60,8 @@ def letterbox(img: Image.Image, out_h: int, out_w: int) -> tuple[np.ndarray, flo
 
 def load_detection_sample(n: int) -> tuple[np.ndarray, dict, list[np.ndarray]]:
     ann_path = find_input("pyro_sdis_v2/annotations.parquet")
-    images_dir = ann_path.parent / "images"
+    # Images arrive as tar shards next to the annotations; unpack once to scratch disk.
+    images_dir = unpack(ann_path.parent, data_dir() / "pyro_sdis_images", "images-*.tar")
     df = pd.read_parquet(ann_path)
     train = df[df["split"] == "train"]
     pos = train[train["has_smoke"]].sample(min(int(n * 0.85), int(train["has_smoke"].sum())), random_state=0)
