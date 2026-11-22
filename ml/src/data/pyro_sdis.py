@@ -11,13 +11,13 @@ Run (from ml/):
 Outputs, under <output_dir>/pyro_sdis_v2/:
     images/<image_name>       original JPEG bytes, untouched
     annotations.parquet       one row per image: metadata, boxes, split
-    splits_v1.json            frozen split lockfile (image lists + sha256)
+    splits_v2.json            frozen split lockfile (image lists + sha256)
     stats.json                dataset statistics
     data_report.md            human-readable summary of the above
 
 Split design (see docs/research/01-datasets.md §5):
-    test  = every image from ~15% of camera *sites*, held out entirely,
-            stratified by partner. Cameras on one tower share background,
+    test  = every image from whole camera sites, chosen until ~15% of
+            images are held out, round-robin across partners. Cameras on one tower share background,
             so holding out whole sites is stricter than holding out ids.
     val   = official val minus held-out sites (in-distribution check)
     train = everything else, minus near-duplicates of any val/test image
@@ -44,7 +44,8 @@ from src.common.env import data_dir, git_sha, output_dir
 REPO = "pyronear/pyro-sdis"
 REVISION = "v2.0"  # pinned tag; main may move
 SEED = 42
-HELDOUT_SITE_FRACTION = 0.15
+HELDOUT_IMAGE_FRACTION = 0.15  # aim: share of images in held-out sites
+HELDOUT_IMAGE_CAP = 0.20       # never hold out more than this
 PHASH_MAX_DISTANCE = 6  # Hamming distance (of 64 bits) counted as near-duplicate
 SMOKE_CLASS_ID = 0  # v2.0 uses class 0 (v1.0 used 1)
 
@@ -164,15 +165,40 @@ def process_shards(shards: list[Path], images_dir: Path | None, limit: int | Non
 # ── Splitting + dedup ──────────────────────────────────────────────────────
 
 def choose_heldout_sites(df: pd.DataFrame) -> list[str]:
-    """~15% of sites per partner, deterministic."""
+    """Hold out whole sites until ~15% of *images* are held out.
+
+    Site sizes are very uneven (one site can hold 10% of the data), so
+    choosing a share of sites overshoots badly; v1 of this split held out 29%
+    of images. Sites are drawn round-robin across partners that have at
+    least 3 sites (so each keeps training data), skipping any site that
+    would push the total past the cap or take over 40% of its partner.
+    """
     rng = np.random.default_rng(SEED)
-    heldout: list[str] = []
-    for partner, sites in df.groupby("partner")["site"].unique().items():
-        sites = sorted(sites)
-        k = int(round(HELDOUT_SITE_FRACTION * len(sites)))
+    total = len(df)
+    target, cap = HELDOUT_IMAGE_FRACTION * total, HELDOUT_IMAGE_CAP * total
+    site_n = df.groupby("site").size()
+    partner_n = df.groupby("partner").size()
+    site_partner = df.groupby("site")["partner"].agg(lambda s: s.mode().iloc[0])
+
+    queues = {}
+    for partner, sites in site_partner.groupby(site_partner).groups.items():
         if len(sites) >= 3:
-            k = max(1, k)
-        heldout += list(rng.choice(sites, size=k, replace=False)) if k else []
+            order = sorted(sites)
+            rng.shuffle(order)
+            queues[partner] = order
+    heldout, held, partner_held = [], 0, {p: 0 for p in queues}
+    while held < target and any(queues.values()):
+        for partner in sorted(queues, key=lambda p: -partner_n[p]):
+            while queues[partner]:
+                site = queues[partner].pop(0)
+                n = int(site_n[site])
+                if held + n <= cap and partner_held[partner] + n <= 0.4 * partner_n[partner]:
+                    heldout.append(site)
+                    held += n
+                    partner_held[partner] += n
+                    break
+            if held >= target:
+                break
     return sorted(heldout)
 
 
@@ -292,7 +318,7 @@ def write_lockfile(df: pd.DataFrame, heldout: list[str], path: Path) -> None:
     digest = {name: hashlib.sha256("\n".join(names).encode()).hexdigest() for name, names in splits.items()}
     path.write_text(json.dumps({
         "dataset": REPO, "revision": REVISION, "seed": SEED,
-        "heldout_site_fraction": HELDOUT_SITE_FRACTION,
+        "heldout_image_fraction": HELDOUT_IMAGE_FRACTION,
         "phash_max_distance": PHASH_MAX_DISTANCE,
         "heldout_sites": heldout,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -322,7 +348,7 @@ def main() -> None:
     stats = compute_stats(df, heldout, dedup)
 
     df.to_parquet(out / "annotations.parquet", index=False)
-    write_lockfile(df, heldout, out / "splits_v1.json")
+    write_lockfile(df, heldout, out / "splits_v2.json")
     (out / "stats.json").write_text(json.dumps(stats, indent=2))
     write_report(stats, out / "data_report.md")
     print((out / "data_report.md").read_text())

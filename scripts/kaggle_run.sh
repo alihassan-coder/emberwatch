@@ -29,7 +29,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # Kaggle CLI 2.2.5 imports `six` without declaring it.
 KAGGLE=(uvx --python 3.12 --with six kaggle@latest)
 DEFAULT_FETCH='\.(json|md|log|csv|txt|png)$'
-POLL_SECONDS=60
+POLL_SECONDS=180  # Kaggle rate-limits frequent polling
 
 die() { echo "error: $*" >&2; exit 1; }
 log() { printf '\033[1;34m[kaggle]\033[0m %s\n' "$*"; }
