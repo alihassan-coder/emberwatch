@@ -11,7 +11,7 @@ Run (from ml/):
 Outputs, under <output_dir>/pyro_sdis_v2/:
     images-NNN.tar            original JPEG bytes, untouched, in ~1 GB tar shards
     annotations.parquet       one row per image: metadata, boxes, split
-    splits_v2.json            frozen split lockfile (image lists + sha256)
+    splits_v3.json            frozen split lockfile (image lists + sha256)
     stats.json                dataset statistics
     data_report.md            human-readable summary of the above
 
@@ -47,6 +47,7 @@ REVISION = "v2.0"  # pinned tag; main may move
 SEED = 42
 HELDOUT_IMAGE_FRACTION = 0.15  # aim: share of images in held-out sites
 HELDOUT_IMAGE_CAP = 0.20       # never hold out more than this
+HELDOUT_MAX_SITE_SHARE = 0.07  # only hold out sites this small, so the test set spans many views
 PHASH_MAX_DISTANCE = 6  # Hamming distance (of 64 bits) counted as near-duplicate
 SMOKE_CLASS_ID = 0  # v2.0 uses class 0 (v1.0 used 1)
 
@@ -173,6 +174,8 @@ def choose_heldout_sites(df: pd.DataFrame) -> list[str]:
     of images. Sites are drawn round-robin across partners that have at
     least 3 sites (so each keeps training data), skipping any site that
     would push the total past the cap or take over 40% of its partner.
+    Very large sites are never held out: one of them alone would fill the
+    budget, and the test set would show just one or two views (v2 did that).
     """
     rng = np.random.default_rng(SEED)
     total = len(df)
@@ -193,7 +196,9 @@ def choose_heldout_sites(df: pd.DataFrame) -> list[str]:
             while queues[partner]:
                 site = queues[partner].pop(0)
                 n = int(site_n[site])
-                if held + n <= cap and partner_held[partner] + n <= 0.4 * partner_n[partner]:
+                small_enough = n <= HELDOUT_MAX_SITE_SHARE * total
+                fits = held + n <= cap and partner_held[partner] + n <= 0.4 * partner_n[partner]
+                if small_enough and fits:
                     heldout.append(site)
                     held += n
                     partner_held[partner] += n
@@ -351,7 +356,7 @@ def main() -> None:
 
     # Save the expensive results before anything that could still fail.
     df.to_parquet(out / "annotations.parquet", index=False)
-    write_lockfile(df, heldout, out / "splits_v2.json")
+    write_lockfile(df, heldout, out / "splits_v3.json")
 
     if images_dir:
         index = shard_utils.pack(images_dir, out, prefix="images")
