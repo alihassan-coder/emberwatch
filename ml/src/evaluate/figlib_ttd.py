@@ -71,12 +71,19 @@ def score_frames(frames: pd.DataFrame, frames_dir: Path, scorer: OnnxTileScorer)
             return np.asarray(img.convert("RGB"))
 
     scores = np.zeros(len(frames))
+    files = frames["file"].tolist()
     started = time.time()
-    with ThreadPoolExecutor(max_workers=4) as pool:  # decode the next frames while scoring
-        for i, frame in enumerate(pool.map(load, frames["file"])):
-            scores[i] = scorer.score(frame)
-            if (i + 1) % 1000 == 0:
-                print(f"[score] {i + 1}/{len(frames)} frames, {(time.time() - started) / 60:.1f} min", flush=True)
+    # Decode in bounded batches. pool.map over every file at once queues all
+    # decoded frames in memory (~3.7 MB each) faster than they are scored:
+    # the first full run was killed (exit 137) after 6,000 frames.
+    batch = 64
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for start in range(0, len(files), batch):
+            for j, frame in enumerate(pool.map(load, files[start:start + batch])):
+                scores[start + j] = scorer.score(frame)
+            done = min(start + batch, len(files))
+            if done % 1024 < batch or done == len(files):
+                print(f"[score] {done}/{len(files)} frames, {(time.time() - started) / 60:.1f} min", flush=True)
     return scores
 
 
