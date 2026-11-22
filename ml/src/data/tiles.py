@@ -25,6 +25,18 @@ class TileLayout:
     rows: int = 4  # 4 x 224 = 896 > 720, so rows overlap a little
     cols: int = 6  # 6 x 224 = 1344 > 1280, so columns overlap a little
 
+    @classmethod
+    def for_frame(cls, frame_h: int, frame_w: int, tile: int = 224) -> "TileLayout":
+        """Layout for any frame size: ceil(side / tile) tiles per side, overlapping evenly.
+
+        1280x720 gives the 6x4 grid used in training; a 1280x960 FIgLib
+        frame gives 6x5. The model only ever sees 224x224 tiles, so it does
+        not care how many there are.
+        """
+        rows = max(1, -(-frame_h // tile))
+        cols = max(1, -(-frame_w // tile))
+        return cls(frame_h=frame_h, frame_w=frame_w, tile=tile, rows=rows, cols=cols)
+
     def origins(self) -> list[tuple[int, int]]:
         """Top-left (y, x) of every tile, evenly spread so the edges are covered."""
         ys = np.linspace(0, self.frame_h - self.tile, self.rows).round().astype(int)
