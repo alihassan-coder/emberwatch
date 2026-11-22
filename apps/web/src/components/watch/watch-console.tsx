@@ -96,7 +96,7 @@ function AlertCard({ alert, cameras }: { alert: PlumeAlert; cameras: CameraView[
             {alert.verdict?.status === "confirmed" ? "Confirmed fire" : `Not a fire${alert.verdict?.reason ? `: ${alert.verdict.reason.toLowerCase()}` : ""}`}
           </Badge>
         ) : (
-          <Button className="w-full bg-suspect text-ridge hover:bg-suspect/85" render={<Link href={`/alerts?id=${alert.id}`} />}>
+          <Button className="w-full bg-suspect text-ridge hover:bg-suspect/85" nativeButton={false} render={<Link href={`/alerts?id=${alert.id}`} />}>
             Review alert
           </Button>
         )}

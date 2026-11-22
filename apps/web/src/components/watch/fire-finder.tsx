@@ -8,7 +8,7 @@
 */
 
 import { cn } from "cn";
-import { travel, type LatLon } from "@/lib/geo";
+import { px, travel, type LatLon } from "@/lib/geo";
 import { compass, coords } from "@/lib/format";
 
 export type FinderCamera = {
@@ -54,7 +54,7 @@ function makeProjection(points: LatLon[]) {
   const scale = Math.min((W - 2 * PAD) / spanX, (H - 2 * PAD) / spanY);
   const offX = (W - spanX * scale) / 2;
   const offY = (H - spanY * scale) / 2;
-  const project = (p: LatLon) => ({ x: offX + (p.lon * kx - minX) * scale, y: H - (offY + (p.lat - minY) * scale) });
+  const project = (p: LatLon) => ({ x: px(offX + (p.lon * kx - minX) * scale), y: px(H - (offY + (p.lat - minY) * scale)) });
   return { project, pxPerKm: scale / 111.32 };
 }
 
@@ -67,7 +67,7 @@ function DegreeRing({ x, y, r, strong }: { x: number; y: number; r: number; stro
         const long = deg % 30 === 0;
         const r1 = r - (long ? 7 : 4);
         return (
-          <line key={deg} x1={x + Math.cos(rad) * r1} y1={y + Math.sin(rad) * r1} x2={x + Math.cos(rad) * r} y2={y + Math.sin(rad) * r}
+          <line key={deg} x1={px(x + Math.cos(rad) * r1)} y1={px(y + Math.sin(rad) * r1)} x2={px(x + Math.cos(rad) * r)} y2={px(y + Math.sin(rad) * r)}
             stroke="var(--contour)" strokeOpacity={long ? 0.8 : 0.45} />
         );
       })}
@@ -166,10 +166,10 @@ export function FireFinder({ cameras, alert, focus = false, selectedId, onSelect
       )}
 
       <g transform={`translate(28, ${H - 24})`} aria-hidden>
-        <line x1="0" y1="0" x2={scaleKm * pxPerKm} y2="0" stroke="var(--contour)" strokeWidth="2" />
+        <line x1="0" y1="0" x2={px(scaleKm * pxPerKm)} y2="0" stroke="var(--contour)" strokeWidth="2" />
         <line x1="0" y1="-5" x2="0" y2="5" stroke="var(--contour)" />
-        <line x1={scaleKm * pxPerKm} y1="-5" x2={scaleKm * pxPerKm} y2="5" stroke="var(--contour)" />
-        <text x={scaleKm * pxPerKm + 8} y="5" className="fill-contour text-[15px]" {...halo}>{scaleKm} km</text>
+        <line x1={px(scaleKm * pxPerKm)} y1="-5" x2={px(scaleKm * pxPerKm)} y2="5" stroke="var(--contour)" />
+        <text x={px(scaleKm * pxPerKm + 8)} y="5" className="fill-contour text-[15px]" {...halo}>{scaleKm} km</text>
       </g>
       <text x={W - 16} y={H - 18} textAnchor="end" className="fill-contour text-[13px]" {...halo}>
         Tower positions are approximate

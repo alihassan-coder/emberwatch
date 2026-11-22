@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BellRing, Cpu, ScanSearch, TowerControl } from "lucide-react";
+import { BellRing, Clapperboard, Cpu, ScanSearch, ShieldCheck, TowerControl } from "lucide-react";
 import { cn } from "cn";
 import { getHealth, type Health } from "@/lib/api";
+import { px } from "@/lib/geo";
 import { ReplayControls } from "@/components/replay/replay-controls";
 import { useReplay } from "@/lib/replay/store";
 
 const NAV = [
   { href: "/", label: "Watch", icon: TowerControl },
+  { href: "/live", label: "Live detection", icon: Clapperboard },
   { href: "/alerts", label: "Alerts", icon: BellRing },
+  { href: "/proof", label: "Try to fool it", icon: ShieldCheck },
   { href: "/analyze", label: "Analyze a frame", icon: ScanSearch },
   { href: "/model", label: "Model", icon: Cpu },
 ];
@@ -24,7 +27,7 @@ function Mark() {
       {Array.from({ length: 12 }, (_, i) => {
         const a = (i * 30 * Math.PI) / 180;
         return (
-          <line key={i} x1={16 + Math.sin(a) * 9.5} y1={16 - Math.cos(a) * 9.5} x2={16 + Math.sin(a) * 12} y2={16 - Math.cos(a) * 12} stroke="var(--contour)" strokeWidth="1" />
+          <line key={i} x1={px(16 + Math.sin(a) * 9.5)} y1={px(16 - Math.cos(a) * 9.5)} x2={px(16 + Math.sin(a) * 12)} y2={px(16 - Math.cos(a) * 12)} stroke="var(--contour)" strokeWidth="1" />
         );
       })}
       <line x1="16" y1="16" x2="25" y2="9" stroke="var(--suspect)" strokeWidth="2" strokeLinecap="round" />

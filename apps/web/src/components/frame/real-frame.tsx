@@ -16,8 +16,11 @@ function heat(p: number) {
   return `rgb(229 83 61 / ${(0.26 + (p - 0.6) * 0.75).toFixed(2)})`;
 }
 
+type Overlayable = Pick<ManifestFrame, "file" | "boxes"> & { tiles?: ManifestFrame["tiles"] };
+
 export function RealFrame({
   frame,
+  base = "/demo/",
   showTiles = false,
   subtle = false,
   showBoxes = false,
@@ -26,7 +29,8 @@ export function RealFrame({
   priority = false,
   threshold = 0.5,
 }: {
-  frame: ManifestFrame;
+  frame: Overlayable;
+  base?: string; // folder the frame's file path is relative to
   showTiles?: boolean;
   /** Outline the tiles that pass `threshold` instead of filling every tile (for small views). */
   subtle?: boolean;
@@ -40,7 +44,7 @@ export function RealFrame({
     <div className={cn("relative aspect-video overflow-hidden bg-ridge", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element -- static demo frames, already sized for the wall */}
       <img
-        src={`/demo/${frame.file}`}
+        src={`${base}${frame.file}`}
         alt={alt}
         width={W}
         height={H}

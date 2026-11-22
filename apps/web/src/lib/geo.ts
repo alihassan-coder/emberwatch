@@ -49,3 +49,9 @@ export function crossBearings(a: LatLon, bearingA: number, b: LatLon, bearingB: 
   if (t < 0) return null; // crossing is behind camera a
   return { lat: a.lat + (t * day) / ky, lon: a.lon + (t * dax) / kx };
 }
+
+/**
+ * Round an SVG coordinate. Trig results can differ in the last digits between
+ * the server and the browser, which React reports as a hydration mismatch.
+ */
+export const px = (n: number) => Math.round(n * 100) / 100;

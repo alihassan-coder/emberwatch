@@ -234,7 +234,7 @@ export function AlertReview() {
           <Button onClick={() => replay.seek(3)} className="bg-suspect text-ridge hover:bg-suspect/85">
             Jump to the first alert
           </Button>
-          <Button variant="outline" render={<Link href="/" />}>
+          <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
             Back to Watch
           </Button>
         </div>

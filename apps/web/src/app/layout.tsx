@@ -27,7 +27,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} h-full antialiased`}>
-      <body className="min-h-full">
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) add attributes to <body> before React loads */}
+      <body className="min-h-full" suppressHydrationWarning>
         <TooltipProvider>
           <AppShell>{children}</AppShell>
           <AlertAnnouncer />
