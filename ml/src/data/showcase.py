@@ -115,9 +115,26 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
     test = v2[v2["split"] == "test"]
     clear_counts = test[~test["has_smoke"]].groupby("camera").size()
     test_cams = {camera} if camera else set(clear_counts[clear_counts >= lead_in].index)
-    seq = longest_sequence(v1_frames(test_cams))
-    cam = seq["camera"].iloc[0]
-    images = load_v1_images(seq)
+    v1 = v1_frames(test_cams)
+    fps = VIDEO_FPS
+    if len(v1):
+        seq = longest_sequence(v1)
+        cam = seq["camera"].iloc[0]
+        images = load_v1_images(seq)
+        smoke_sources = [("smoke", r.image_name, images[r.image_name], r.annotations, None)
+                         for r in seq.itertuples() if r.image_name in images]
+    else:
+        # The camera is newer than v1.0 (e.g. the Nemours town cameras, added in
+        # 2025): use its v2.0 frames from its busiest smoke day instead. v2.0 keeps
+        # at most 10 frames per sequence, so play them slower.
+        cam = camera
+        own = v2[(v2["camera"] == cam) & v2["has_smoke"]].assign(day=lambda d: d["date"].str[:10])
+        day = own["day"].value_counts().idxmax()
+        rows = own[own["day"] == day].sort_values("date")
+        smoke_sources = [("smoke", r.image_name, (v2_images / r.image_name).read_bytes(), None, list(r.boxes_cxcywh_norm))
+                         for r in rows.itertuples()]
+        fps = 2
+        print(f"[video] {cam} not in v1.0: using {len(rows)} v2.0 frames from {day}", flush=True)
 
     # Lead-in: smoke-free frames of the same camera, from v2.0's false-alarm set.
     lead = v2[(v2["camera"] == cam) & ~v2["has_smoke"]].sort_values("date").tail(lead_in)
@@ -126,12 +143,12 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
     frames_dir.mkdir(parents=True)
 
     timeline = []
-    sources = [("lead", r.image_name, (v2_images / r.image_name).read_bytes(), "") for r in lead.itertuples()]
-    sources += [("smoke", r.image_name, images[r.image_name], r.annotations) for r in seq.itertuples() if r.image_name in images]
-    for i, (phase, name, raw, ann) in enumerate(sources):
+    sources = [("lead", r.image_name, (v2_images / r.image_name).read_bytes(), None, []) for r in lead.itertuples()]
+    sources += smoke_sources
+    for i, (phase, name, raw, ann, v2_boxes) in enumerate(sources):
         full = Image.open(io.BytesIO(raw)).convert("RGB")
         (frames_dir / f"{i:04d}.jpg").write_bytes(jpeg(full))
-        boxes = []
+        boxes = [[round(v * SCALE, 1) for v in to_yxyx(b, *full.size)] for b in (v2_boxes or [])]
         if ann:
             # v1.0 labels smoke as class 1 (v2.0 uses 0): normalise before parsing.
             fixed = "\n".join("0 " + " ".join(line.split()[1:]) for line in ann.strip().splitlines() if line.split())
@@ -148,12 +165,14 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
         print("[video] ffmpeg not found: wrote frames instead of an MP4", flush=True)
     else:
         subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(VIDEO_FPS), "-i", str(frames_dir / "%04d.jpg"),
+        ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(frames_dir / "%04d.jpg"),
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "26", "-movflags", "+faststart", str(out / "video.mp4")],
         check=True,
         )
-    meta = {"camera": cam, "site": cam.rsplit("-", 1)[0], "heading": int(cam.rsplit("-", 1)[1]), "fps": VIDEO_FPS,
-            "seconds_per_frame_real": 30, "frame_size": [OUT_W, OUT_H], "frames": timeline}
+    smoke_times = pd.to_datetime([e["taken"] for e in timeline if e["phase"] == "smoke"], format="%Y-%m-%dT%H-%M-%S")
+    gap = float(pd.Series(smoke_times).diff().dt.total_seconds().median()) if len(smoke_times) > 1 else 30.0
+    meta = {"camera": cam, "site": cam.split("-")[0], "heading": int(cam.rsplit("-", 1)[1]), "fps": fps,
+            "seconds_per_frame_real": round(gap), "frame_size": [OUT_W, OUT_H], "frames": timeline}
     (out / "video.json").write_text(json.dumps(meta, indent=1))
     size = (out / "video.mp4").stat().st_size / 1e6 if (out / "video.mp4").exists() else 0
     print(f"[video] {len(timeline)} frames, video {size:.1f} MB", flush=True)
