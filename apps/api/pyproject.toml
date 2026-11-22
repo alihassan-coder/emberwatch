@@ -1,0 +1,18 @@
+[project]
+name = "emberwatch-api"
+version = "0.1.0"
+description = "EmberWatch API: serves the ONNX smoke model, camera replay, alerts and reviews"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.165.0",
+    "numpy>=2.5.5",
+    "onnxruntime>=1.32.0",
+]
+
+[project.scripts]
+emberwatch-api = "emberwatch_api:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
