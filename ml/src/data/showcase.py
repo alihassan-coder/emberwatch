@@ -109,7 +109,12 @@ def load_v1_images(rows: pd.DataFrame) -> dict[str, bytes]:
 
 
 def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path) -> dict:
-    test_cams = set(v2.loc[v2["split"] == "test", "camera"])
+    # Only cameras with smoke-free frames qualify: the video must open before
+    # the smoke, so viewers see the moment it appears (cabanelle-327, the
+    # first pick, has none and the video started mid-fire).
+    test = v2[v2["split"] == "test"]
+    clear_counts = test[~test["has_smoke"]].groupby("camera").size()
+    test_cams = set(clear_counts[clear_counts >= CLEAR_LEAD_IN].index)
     seq = longest_sequence(v1_frames(test_cams))
     cam = seq["camera"].iloc[0]
     images = load_v1_images(seq)
