@@ -16,6 +16,9 @@
 #   --gpu             request a T4 x2 GPU (uses weekly GPU quota)
 #   --extras LIST     comma-separated pyproject extras to install (e.g. train)
 #   --source SLUG     attach another kernel's output as input (repeatable)
+#   --model HANDLE    attach a Kaggle model, e.g. keras/efficientnet/keras/efficientnet_b0_ra_imagenet/2
+#                     (repeatable). Kaggle refuses to attach models from inside a
+#                     non-interactive job, so KerasHub presets must be declared here.
 #   --fetch REGEX     which output files to download (default: small files only)
 #   --no-wait         push and return immediately
 #
@@ -87,12 +90,13 @@ wait_for() {
 
 cmd_run() {
   local slug="$1" module="$2"; shift 2
-  local gpu=0 extras="" fetch_pattern="$DEFAULT_FETCH" wait=1 sources=()
+  local gpu=0 extras="" fetch_pattern="$DEFAULT_FETCH" wait=1 sources=() models=()
   while (( $# )); do
     case "$1" in
       --gpu) gpu=1 ;;
       --extras) extras="$2"; shift ;;
       --source) sources+=("\"$KAGGLE_USER/$2\""); shift ;;
+      --model) models+=("\"$2\""); shift ;;
       --fetch) fetch_pattern="$2"; shift ;;
       --no-wait) wait=0 ;;
       *) die "unknown option $1" ;;
@@ -120,6 +124,7 @@ REPO = "$REPO_URL"
 SHA = "$sha"
 MODULE = "$module"
 EXTRAS = "$extras"
+GPU = $([[ $gpu == 1 ]] && echo True || echo False)
 
 def sh(cmd, **kw):
     print(f"\n\$ {cmd}", flush=True)
@@ -141,12 +146,15 @@ sh("pip install --quiet uv")
 extra_flags = " ".join(f"--extra {e}" for e in EXTRAS.split(",") if e)
 sh(f"cd /tmp/emberwatch/ml && uv pip install --system --break-system-packages --quiet -r pyproject.toml {extra_flags}")
 env = dict(os.environ, EMBERWATCH_GIT_SHA=SHA, PYTHONUNBUFFERED="1")
+if not GPU:
+    env["JAX_PLATFORMS"] = "cpu"  # no GPU: stop JAX's CUDA plugin from erroring at start-up
 sh("cd /tmp/emberwatch/ml && python -m src.common.env_report", env=env)
 sh(f"cd /tmp/emberwatch/ml && python -m {MODULE}", env=env)
 PY
 
-  local src_json
+  local src_json model_json
   src_json="$(IFS=,; echo "${sources[*]:-}")"
+  model_json="$(IFS=,; echo "${models[*]:-}")"
   cat > "$push_dir/kernel-metadata.json" <<JSON
 {
   "id": "$KAGGLE_USER/$slug",
@@ -161,7 +169,7 @@ PY
   "dataset_sources": [],
   "competition_sources": [],
   "kernel_sources": [$src_json],
-  "model_sources": []
+  "model_sources": [$model_json]
 }
 JSON
 
