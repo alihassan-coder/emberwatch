@@ -180,7 +180,7 @@ def build_gallery(out: Path, scorer, v2: pd.DataFrame, images: Path) -> dict:
         # one per camera where possible, so the gallery shows many different scenes
         "ignored": negatives.sort_values("score").drop_duplicates("camera").head(GALLERY_EACH),
         "caught": smallest[smallest["score"] >= 0.5].drop_duplicates("camera").head(GALLERY_EACH),
-        "missed": smallest.sort_values("score").head(GALLERY_EACH // 2),
+        "missed": smallest.sort_values("score").drop_duplicates("camera").head(GALLERY_EACH // 2),
     }
     gallery = {}
     for kind, rows in picks.items():
