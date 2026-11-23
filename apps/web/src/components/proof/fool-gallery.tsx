@@ -25,7 +25,7 @@ const COPY: Record<Kind, { tab: string; title: string; body: string }> = {
   missed: {
     tab: "Where it misses",
     title: "Honest misses",
-    body: "The faintest plumes it scored lowest. Two frames in a row are usually needed for an alert, so a single miss rarely loses a fire, but these show where the next model has to improve.",
+    body: "The faintest plumes it scored lowest. Two smoke photos in a row are usually needed for an alert, so a single miss rarely loses a fire, but these show where the next model has to improve.",
   },
 };
 

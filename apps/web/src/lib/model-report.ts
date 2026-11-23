@@ -19,9 +19,9 @@ export const MODEL_REPORT = {
   status: "Trained for 29 minutes on a Kaggle T4 GPU",
   metrics: [
     {
-      name: "Frames judged correctly",
+      name: "Photos judged correctly",
       explain:
-        "F1 on 2,070 frames from 7 camera sites the model never trained on. Precision 95%: of the frames it flags, 95% really show smoke. Recall 91%: it flags 91% of smoke frames.",
+        "F1 on 2,070 photos from 7 camera sites the model never trained on. Precision 95%: of the photos it flags, 95% really show smoke. Recall 91%: it flags 91% of smoke photos.",
       target: 0.82,
       better: "higher",
       unit: "%",
@@ -40,7 +40,7 @@ export const MODEL_REPORT = {
     },
     {
       name: "Average time to detect",
-      explain: "Minutes from the first frame with visible smoke to the alert, on the same 89 Californian fires (median 8 minutes).",
+      explain: "Minutes from the first photo with visible smoke to the alert, on the same 89 Californian fires (median 8 minutes).",
       target: 3,
       better: "lower",
       unit: "min",
@@ -56,8 +56,8 @@ export const MODEL_REPORT = {
       value: 0.73,
     },
     {
-      name: "Time per frame",
-      explain: "Model time for one 1280×720 frame (24 tiles) on 4 CPU threads, with no GPU.",
+      name: "Time per photo",
+      explain: "Model time for one 1280×720 photo (24 tiles) on 4 CPU threads, with no GPU.",
       target: 1000,
       better: "lower",
       unit: "ms",
@@ -65,17 +65,17 @@ export const MODEL_REPORT = {
     },
   ] satisfies Metric[],
   data: [
-    { label: "Training frames", value: "8,741", detail: "Pyro-SDIS v2.0, Apache-2.0, 19 camera sites in France and Chile" },
-    { label: "Held-out test frames", value: "2,070", detail: "7 whole camera sites (56 cameras) kept out of training" },
-    { label: "Near-duplicates removed", value: "663", detail: "Frames too similar to a test frame, so scores aren't inflated" },
+    { label: "Training photos", value: "8,741", detail: "Pyro-SDIS v2.0, Apache-2.0, 19 camera sites in France and Chile" },
+    { label: "Held-out test photos", value: "2,070", detail: "7 whole camera sites (56 cameras) kept out of training" },
+    { label: "Near-duplicates removed", value: "663", detail: "Photos too similar to a test photo, so scores aren't inflated" },
     { label: "Real fire sequences", value: "525", detail: "FIgLib, HPWREN cameras in Southern California, 2016–2026" },
     { label: "Test fires", value: "89", detail: "Split by fire event, plus 2 whole stations held out" },
   ],
   limits: [
-    "Night frames: many tower cameras show almost nothing after dark.",
+    "Night photos: many tower cameras show almost nothing after dark.",
     "Monochrome and older cameras are tested separately and are not trained on yet.",
     "Very distant plumes: 5% of smoke boxes are under 6 pixels wide at 640 px.",
     "Trained on French and Chilean cameras; the California fire test measures how well that carries over.",
-    "The frame threshold picked for the best F1 (23%) is trigger-happy for alerts, so alerts use a separate 50% threshold.",
+    "The photo threshold picked for the best F1 (23%) is trigger-happy for alerts, so alerts use a separate 50% threshold.",
   ],
 };

@@ -25,7 +25,7 @@ export function AlertAnnouncer() {
       if (a.verdict) continue;
       const n = a.cameraIds.length;
       toast.warning(`New alert ${a.id}`, {
-        description: n > 1 ? `Smoke seen by ${n} cameras.` : `Possible smoke on ${a.cameraIds[0]}.`,
+        description: n > 1 ? `Smoke seen by ${n} cameras.` : `Smoke seen by ${a.cameraIds[0]}.`,
         action: { label: "Review", onClick: () => router.push(`/alerts?id=${a.id}`) },
       });
     }

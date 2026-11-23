@@ -54,6 +54,12 @@ function subscribe(listener: () => void) {
   };
 }
 
+/** First replay step at which any alert exists. */
+const firstAlertStep = (() => {
+  for (let s = 0; s < timeline.steps; s++) if (snapshotAt(timeline, s, {}).alerts.length) return s;
+  return 0;
+})();
+
 // The server and the first client render show the opening frame, paused in time.
 const serverSnapshot = snapshotAt(timeline, 0, {});
 
@@ -63,6 +69,10 @@ export const replay = {
   toggle: () => set({ playing: !state.playing }),
   setSpeed: (speed: State["speed"]) => set({ speed }),
   seek: (step: number) => set({ step, playing: false }),
+  /** For pages that are empty without an alert: move the replay to the first one. */
+  showFirstAlert: () => {
+    if (snapshot.alerts.length === 0) set({ step: firstAlertStep, playing: true });
+  },
   restart: () => set({ step: 0, reviews: {}, playing: true }),
   review: (alertId: string, verdict: Verdict | null) => {
     const reviews = { ...state.reviews };

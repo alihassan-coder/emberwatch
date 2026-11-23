@@ -71,7 +71,7 @@ function AlertCard({ alert, cameras }: { alert: PlumeAlert; cameras: CameraView[
       <CardHeader className="px-4">
         <div className="flex items-baseline justify-between gap-3">
           <CardTitle className="font-heading text-xl font-semibold text-paper">
-            {alert.cameraIds.length > 1 ? `Smoke seen by ${alert.cameraIds.length} cameras` : "Possible smoke"}
+            {alert.cameraIds.length > 1 ? `Smoke seen by ${alert.cameraIds.length} cameras` : `Smoke seen by ${alert.cameraIds[0]}`}
           </CardTitle>
           <span className="text-xs text-contour">{alert.id}</span>
         </div>
@@ -169,9 +169,9 @@ export function WatchConsole() {
             <CardContent className="space-y-3 px-4">
               <p className="text-paper">No alerts yet.</p>
               <p className="text-sm text-contour">
-                An alert is raised when a camera&apos;s smoke score passes {pct(r.threshold)} in 2 of 3 frames in a row.
+                An alert is raised when a camera&apos;s smoke score passes {pct(r.threshold)} in 2 of its last 3 photos.
               </p>
-              <Button variant="outline" size="sm" onClick={() => replay.seek(3)}>
+              <Button variant="outline" size="sm" onClick={replay.showFirstAlert}>
                 Jump to the first alert
               </Button>
             </CardContent>

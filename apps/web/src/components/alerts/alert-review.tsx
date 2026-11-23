@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
@@ -27,7 +27,7 @@ function verdictLabel(v: Verdict) {
 function Filmstrip({ cameraId, upTo, picked, onPick, threshold }: { cameraId: string; upTo: number; picked: number; onPick: (i: number) => void; threshold: number }) {
   const frames = framesOf(cameraId).slice(0, upTo + 1);
   return (
-    <ol className="grid grid-cols-6 gap-1.5 lg:grid-cols-12" aria-label={`${cameraId} frames so far`}>
+    <ol className="grid grid-cols-6 gap-1.5 lg:grid-cols-12" aria-label={`${cameraId} photos so far`}>
       {frames.map((f, i) => {
         const s = f.score ?? 0;
         return (
@@ -66,7 +66,7 @@ function DecisionPanel({ alert }: { alert: PlumeAlert }) {
             ? alert.location
               ? `Location ${coords(alert.location.lat, alert.location.lon)} is ready for dispatch.`
               : "No location yet: only one tower sees it."
-            : "These frames go into the next training round as examples of what smoke is not.",
+            : "These photos go into the next training round as examples of what smoke is not.",
         action: { label: "Undo", onClick: () => replay.review(alert.id, null) },
       });
     }
@@ -126,10 +126,10 @@ function AlertDetail({ alert, cameras, step, threshold }: { alert: PlumeAlert; c
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-4xl font-semibold tracking-tight text-paper">
-            {cams.length > 1 ? `Smoke seen by ${cams.length} cameras` : "Possible smoke on one camera"}
+            {cams.length > 1 ? `Smoke seen by ${cams.length} cameras` : `Smoke seen by ${cams[0].id}`}
           </h1>
           <p className="mt-1 text-contour">
-            Alert {alert.id}, raised at frame {alert.raisedAtStep + 1}. Peak score {pct(alert.peakScore)}.
+            Alert {alert.id}, raised at photo {alert.raisedAtStep + 1}. Peak score {pct(alert.peakScore)}.
           </p>
         </div>
         <Tabs value={overlay} onValueChange={(v) => setOverlay(v as typeof overlay)}>
@@ -168,7 +168,7 @@ function AlertDetail({ alert, cameras, step, threshold }: { alert: PlumeAlert; c
             <section aria-labelledby="film-title">
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <h2 id="film-title" className="text-sm text-contour">
-                  {lead.id}, every frame so far. Pick one to compare.
+                  {lead.id}, every photo so far. Pick one to compare.
                 </h2>
                 {picked !== null && (
                   <Button variant="ghost" size="xs" onClick={() => setPicked(null)}>
@@ -204,7 +204,7 @@ function AlertDetail({ alert, cameras, step, threshold }: { alert: PlumeAlert; c
             <Info aria-hidden />
             <AlertTitle>How the location is found</AlertTitle>
             <AlertDescription>
-              Each camera&apos;s bearing is its heading plus where the smoke sits in the frame. Tower positions are
+              Each camera&apos;s bearing is its heading plus where the smoke sits in the photo. Tower positions are
               approximate, so treat the estimate as a search area, not a point.
             </AlertDescription>
           </Alert>
@@ -220,6 +220,10 @@ export function AlertReview() {
   const [tab, setTab] = useState<"open" | "reviewed">("open");
   const [openId, setOpenId] = useState<string | null>(params.get("id"));
 
+  // Someone opening Alerts straight from a link shouldn't meet an empty page:
+  // move the replay forward to the first alert (no-op if one already exists).
+  useEffect(() => replay.showFirstAlert(), []);
+
   const list = r.alerts.filter((a) => (tab === "open" ? !a.verdict : a.verdict));
   const alert = r.alerts.find((a) => a.id === openId) ?? list[0] ?? r.alerts[0];
 
@@ -228,10 +232,10 @@ export function AlertReview() {
       <div className="max-w-xl space-y-4 rounded-xl bg-card bg-contours p-6 ring-1 ring-border">
         <h1 className="font-heading text-3xl font-semibold text-paper">No alerts yet</h1>
         <p className="text-contour">
-          The replay is at {r.clock}. Alerts appear here as soon as a camera sees smoke in 2 of 3 frames.
+          Alerts appear here as soon as a camera sees smoke in 2 of its last 3 photos.
         </p>
         <div className="flex gap-2">
-          <Button onClick={() => replay.seek(3)}>
+          <Button onClick={replay.showFirstAlert}>
             Jump to the first alert
           </Button>
           <Button variant="outline" nativeButton={false} render={<Link href="/cameras" />}>

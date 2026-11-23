@@ -51,20 +51,21 @@ export function ReplayControls() {
         value={r.step}
         onChange={(e) => replay.seek(Number(e.target.value))}
         aria-label="Replay position"
-        aria-valuetext={`${r.clock}, frame ${r.step + 1} of ${r.steps}`}
+        aria-valuetext={`Photo ${r.step + 1} of ${r.steps}`}
         className="hidden w-28 accent-[var(--suspect)] md:block lg:w-40"
       />
 
       <span className="whitespace-nowrap text-sm text-paper tabular-nums">
-        {r.clock}
-        <span className="ml-2 hidden text-contour lg:inline">{day}</span>
+        {/* Each camera's tile shows its own real photo time; the replay itself only has a position. */}
+        Photo {r.step + 1} of {r.steps}
+        <span className="ml-2 hidden text-muted-foreground lg:inline">{day}</span>
       </span>
 
       <Tooltip>
         <TooltipTrigger render={<Button size="icon-sm" variant="ghost" onClick={replay.restart} aria-label="Restart replay" />}>
           <RotateCcw />
         </TooltipTrigger>
-        <TooltipContent>Restart from 11:50 and clear reviews</TooltipContent>
+        <TooltipContent>Start over from the first photo and clear reviews</TooltipContent>
       </Tooltip>
     </div>
   );

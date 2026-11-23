@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { LogoMark } from "@/components/brand/logo";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { PAGES, TOOLS } from "./app-sidebar";
 
@@ -14,6 +16,11 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
       <span className="text-sm font-medium">{page?.label ?? "EmberWatch"}</span>
+      {/* On phones the sidebar is hidden in a sheet, so the brand lives up here. */}
+      <Link href="/" className="ml-auto flex items-center gap-2 text-sm font-semibold md:hidden" aria-label="EmberWatch home">
+        <LogoMark className="size-6" />
+        EmberWatch
+      </Link>
     </header>
   );
 }
