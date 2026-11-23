@@ -13,6 +13,8 @@ import { DEMO_MANIFEST } from "./demo";
 import { buildTimeline, snapshotAt, type Reviews, type Snapshot, type Verdict } from "./engine";
 
 const timeline = buildTimeline(DEMO_MANIFEST);
+/** The fixed demo timeline, for views that need every step (heat strip, event log). */
+export const TIMELINE = timeline;
 const BASE_MS = 2500; // one frame every 2.5 s at 1x
 
 type State = { step: number; playing: boolean; speed: 1 | 2 | 4; reviews: Reviews };
@@ -89,6 +91,7 @@ export function useReplay() {
     ...snap,
     playing: controls.playing,
     speed: controls.speed,
+    reviews: controls.reviews,
     model: timeline.manifest.model,
     threshold: timeline.threshold,
     day: timeline.manifest.day,

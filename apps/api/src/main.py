@@ -117,7 +117,7 @@ async def score_frame(request: Request, image: UploadFile = File(description="A 
     return FrameScore(
         smoke=result.smoke, score=result.score, threshold=result.threshold, width=result.width, height=result.height,
         tiles=[TileScore(**t.__dict__) for t in result.tiles], model_name=model.name, model_version=model.version,
-        latency_ms=result.latency_ms,
+        latency_ms=result.latency_ms, whole_photo=result.whole,
     )
 
 

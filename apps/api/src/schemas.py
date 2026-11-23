@@ -27,7 +27,8 @@ class TileScore(BaseModel):
 
 class FrameScore(BaseModel):
     smoke: bool = Field(description="True when score >= threshold")
-    score: float = Field(ge=0, le=1, description="Highest tile probability in the frame")
+    score: float = Field(ge=0, le=1, description="Highest probability over the tiles and (newer models) the whole photo")
+    whole_photo: float | None = Field(default=None, description="Probability for the whole photo at once (E2+ models)")
     threshold: float
     width: int
     height: int

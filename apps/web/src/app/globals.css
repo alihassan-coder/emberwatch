@@ -141,6 +141,17 @@
 .animate-alert {
   animation: alert-breathe 2.4s ease-in-out infinite;
 }
+/* The model "checking" a new photo: one soft sweep, left to right. */
+@keyframes scan-sweep {
+  from { left: -25%; opacity: 0; }
+  15% { opacity: 1; }
+  to { left: 100%; opacity: 0; }
+}
+.animate-scan {
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, white 28%, transparent), transparent);
+  animation: scan-sweep 0.9s ease-out both;
+}
 @media (prefers-reduced-motion: reduce) {
   .animate-alert { animation: none; }
+  .animate-scan { display: none; }
 }
