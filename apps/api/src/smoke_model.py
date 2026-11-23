@@ -48,8 +48,9 @@ def tile_origins(height: int, width: int, tile: int) -> list[tuple[int, int]]:
 
 
 class SmokeModel:
-    def __init__(self, model_dir: Path, threads: int = 4):
+    def __init__(self, model_dir: Path, threads: int = 4, version: str | None = None):
         self.spec = json.loads((model_dir / "model_spec.json").read_text())
+        self._version = version or self.spec["version"]  # the store's version name, e.g. "e1-18c4671"
         options = ort.SessionOptions()
         options.intra_op_num_threads = threads
         self.session = ort.InferenceSession(
@@ -65,7 +66,7 @@ class SmokeModel:
 
     @property
     def version(self) -> str:
-        return self.spec["version"]
+        return self._version
 
     def score(self, frame: np.ndarray) -> FrameResult:
         """frame: (H, W, 3) RGB uint8. Frames smaller than one tile are padded."""

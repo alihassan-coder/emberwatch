@@ -36,3 +36,6 @@ ml/artifacts/runs/
 
 # API model files (copied from ml/artifacts; never committed)
 apps/api/models/
+
+# API local data: SQLite database and stored camera photos (never committed)
+apps/api/data/

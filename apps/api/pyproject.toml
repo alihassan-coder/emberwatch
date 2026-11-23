@@ -1,19 +1,19 @@
 [project]
 name = "emberwatch-api"
-version = "0.1.0"
-description = "EmberWatch API: serves the ONNX smoke model, camera replay, alerts and reviews"
+version = "0.2.0"
+description = "EmberWatch API: serves the ONNX smoke model, camera ingestion, alerts, reviews and notifications"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.1",
     "fastapi[standard]>=0.165.0",
     "numpy>=2.5.5",
     "onnxruntime>=1.32.0",
     "pillow>=13.0.0",
+    "sqlalchemy>=2.1.9",
 ]
 
-[project.scripts]
-emberwatch-api = "emberwatch_api:main"
-
-[build-system]
-requires = ["uv_build>=0.13.6,<0.14.0"]
-build-backend = "uv_build"
+[tool.uv]
+# Code lives directly in src/ and runs from apps/api, like ml/:
+#   uv run fastapi dev src/main.py
+package = false
