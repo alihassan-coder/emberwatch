@@ -16,6 +16,7 @@
 #   --gpu             request a T4 x2 GPU (uses weekly GPU quota)
 #   --extras LIST     comma-separated pyproject extras to install (e.g. train)
 #   --source SLUG     attach another kernel's output as input (repeatable)
+#   --dataset OWNER/SLUG  attach a Kaggle dataset (repeatable)
 #   --model HANDLE    attach a Kaggle model, e.g. keras/efficientnet/keras/efficientnet_b0_ra_imagenet/2
 #                     (repeatable). Kaggle refuses to attach models from inside a
 #                     non-interactive job, so KerasHub presets must be declared here.
@@ -90,13 +91,14 @@ wait_for() {
 
 cmd_run() {
   local slug="$1" module="$2"; shift 2
-  local gpu=0 extras="" fetch_pattern="$DEFAULT_FETCH" wait=1 sources=() models=()
+  local gpu=0 extras="" fetch_pattern="$DEFAULT_FETCH" wait=1 sources=() models=() datasets=()
   while (( $# )); do
     case "$1" in
       --gpu) gpu=1 ;;
       --extras) extras="$2"; shift ;;
       --source) sources+=("\"$KAGGLE_USER/$2\""); shift ;;
       --model) models+=("\"$2\""); shift ;;
+      --dataset) datasets+=("\"$2\""); shift ;;
       --fetch) fetch_pattern="$2"; shift ;;
       --no-wait) wait=0 ;;
       *) die "unknown option $1" ;;
@@ -152,7 +154,8 @@ sh("cd /tmp/emberwatch/ml && python -m src.common.env_report", env=env)
 sh(f"cd /tmp/emberwatch/ml && python -m {MODULE}", env=env)
 PY
 
-  local src_json model_json
+  local src_json model_json ds_json
+  ds_json="$(IFS=,; echo "${datasets[*]:-}")"
   src_json="$(IFS=,; echo "${sources[*]:-}")"
   model_json="$(IFS=,; echo "${models[*]:-}")"
   cat > "$push_dir/kernel-metadata.json" <<JSON
@@ -166,7 +169,7 @@ PY
   "enable_gpu": $([[ $gpu == 1 ]] && echo true || echo false),
   "enable_tpu": false,
   "enable_internet": true,
-  "dataset_sources": [],
+  "dataset_sources": [$ds_json],
   "competition_sources": [],
   "kernel_sources": [$src_json],
   "model_sources": [$model_json]
