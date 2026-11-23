@@ -17,3 +17,14 @@ dependencies = [
 # Code lives directly in src/ and runs from apps/api, like ml/:
 #   uv run fastapi dev src/main.py
 package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+# Run from apps/api:  uv run pytest
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

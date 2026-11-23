@@ -76,7 +76,9 @@ async def ingest_frame(
     frame = Frame(
         camera=camera, taken_at=taken_at, score=result.score,
         tiles=[{"x": t.x, "y": t.y, "size": t.size, "p": round(t.probability, 4)} for t in result.tiles],
-        image_path=str(path.relative_to(API_ROOT)), model_version_id=request.app.state.model_version_id,
+        # Relative to apps/api when stored there, absolute otherwise (e.g. a separate data disk).
+        image_path=str(path.relative_to(API_ROOT) if path.is_relative_to(API_ROOT) else path),
+        model_version_id=request.app.state.model_version_id,
     )
     session.add(frame)
     try:

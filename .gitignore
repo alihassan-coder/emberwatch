@@ -39,3 +39,6 @@ apps/api/models/
 
 # API local data: SQLite database and stored camera photos (never committed)
 apps/api/data/
+
+# Python test cache
+.pytest_cache/

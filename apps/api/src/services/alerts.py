@@ -40,15 +40,20 @@ def bearing_of(camera: Camera, frame: Frame) -> float:
     return (camera.heading + offset) % 360
 
 
-def is_alerting(session: Session, camera: Camera, frame: Frame) -> bool:
-    """K of the camera's last N photos (taken within RULE_WINDOW) passed the threshold."""
+def recent_scores(session: Session, camera: Camera, frame: Frame) -> list[float]:
+    """Scores of the camera's last N photos taken within RULE_WINDOW of this one (newest first)."""
     s = load_settings()
-    recent = session.scalars(
+    return list(session.scalars(
         select(Frame.score)
         .where(Frame.camera_id == camera.id, Frame.taken_at <= frame.taken_at, Frame.taken_at >= frame.taken_at - RULE_WINDOW)
         .order_by(Frame.taken_at.desc()).limit(s.alert_n)
-    ).all()
-    return sum(score >= s.alert_threshold for score in recent) >= s.alert_k
+    ))
+
+
+def is_alerting(scores: list[float]) -> bool:
+    """K of the recent photos passed the threshold."""
+    s = load_settings()
+    return sum(score >= s.alert_threshold for score in scores) >= s.alert_k
 
 
 def _same_plume(a_cam: Camera, a_bearing: float, b_cam: Camera, b_bearing: float) -> bool:
@@ -89,7 +94,8 @@ def _next_code(session: Session) -> str:
 
 def process_frame(session: Session, camera: Camera, frame: Frame) -> Alert | None:
     """Run the alert rule after a new frame. Returns the alert the camera belongs to, if any."""
-    if not is_alerting(session, camera, frame):
+    scores = recent_scores(session, camera, frame)
+    if not is_alerting(scores):
         return None
 
     bearing = bearing_of(camera, frame)
@@ -115,8 +121,9 @@ def process_frame(session: Session, camera: Camera, frame: Frame) -> Alert | Non
     if frame.score < load_settings().alert_threshold:
         return None
 
+    # Peak: the highest of the photos that raised it, not only the latest one.
     alert = Alert(code=_next_code(session), status=AlertStatus.NEEDS_REVIEW, raised_at=frame.taken_at,
-                  last_seen_at=frame.taken_at, peak_score=frame.score)
+                  last_seen_at=frame.taken_at, peak_score=max(scores))
     alert.cameras.append(AlertCamera(camera=camera, bearing=bearing, first_frame_id=frame.id))
     session.add(alert)
     session.flush()

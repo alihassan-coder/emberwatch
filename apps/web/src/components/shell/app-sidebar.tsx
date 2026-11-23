@@ -19,7 +19,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { getHealth } from "@/lib/api";
-import { px } from "@/lib/geo";
+import { LogoMark } from "@/components/brand/logo";
 
 /** Pages in the order a first-time visitor needs them. */
 export const PAGES = [
@@ -29,24 +29,6 @@ export const PAGES = [
   { href: "/results", label: "Results", icon: BarChart3 },
 ];
 export const TOOLS = [{ href: "/analyze", label: "Check a photo", icon: ImageUp }];
-
-/** The EmberWatch mark: a sighting ring with one bearing, as on a lookout's fire finder. */
-function Mark() {
-  return (
-    <svg viewBox="0 0 32 32" className="size-6 shrink-0" aria-hidden>
-      <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      {Array.from({ length: 12 }, (_, i) => {
-        const a = (i * 30 * Math.PI) / 180;
-        return (
-          <line key={i} x1={px(16 + Math.sin(a) * 9.5)} y1={px(16 - Math.cos(a) * 9.5)} x2={px(16 + Math.sin(a) * 12)} y2={px(16 - Math.cos(a) * 12)}
-            stroke="currentColor" strokeOpacity="0.55" strokeWidth="1" />
-        );
-      })}
-      <line x1="16" y1="16" x2="25" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="2" fill="currentColor" />
-    </svg>
-  );
-}
 
 function ApiStatus() {
   const [state, setState] = useState<"checking" | "up" | "down">("checking");
@@ -103,7 +85,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="EmberWatch" render={<Link href="/" />}>
-              <Mark />
+              <LogoMark className="size-7 shrink-0" />
               <span className="font-semibold">EmberWatch</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
