@@ -9,15 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StateChip } from "@/components/watch/state-chip";
 import { ALERT_THRESHOLD } from "@/lib/replay/engine";
-import { VIDEO, clockOf, videoMoments } from "@/lib/showcase";
+import { clockOf, videoMoments, type Scenario, type ShowcaseVideo } from "@/lib/showcase";
 import { STATE_TONE, pct } from "@/lib/format";
 
-const [W, H] = VIDEO.frame_size;
-const moments = videoMoments(ALERT_THRESHOLD);
-
-/** Outlines on the parts of the photo where the model sees smoke. */
-function Overlay({ index }: { index: number }) {
-  const f = VIDEO.frames[index];
+/**
+ * Red outlines on the parts of the photo where the model sees smoke. With
+ * `marked`, also a dashed ring around the smoke a person drew, so a viewer can
+ * find smoke the model missed.
+ */
+function Overlay({ video, index, marked }: { video: ShowcaseVideo; index: number; marked: boolean }) {
+  const [W, H] = video.frame_size;
+  const f = video.frames[index];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
       {f.tiles
@@ -26,20 +28,25 @@ function Overlay({ index }: { index: number }) {
           <rect key={i} x={t.x + 3} y={t.y + 3} width={t.size - 6} height={t.size - 6} rx="4"
             fill="color-mix(in oklch, var(--fire) 10%, transparent)" stroke="var(--fire)" strokeWidth="3" />
         ))}
+      {marked &&
+        f.boxes.map(([y1, x1, y2, x2], i) => (
+          <rect key={`m${i}`} x={x1 - 14} y={y1 - 14} width={x2 - x1 + 28} height={y2 - y1 + 28} rx="6"
+            fill="none" stroke="white" strokeWidth="2.5" strokeDasharray="7 5" />
+        ))}
     </svg>
   );
 }
 
 /** One bar per photo: taller means the model is more sure there is smoke. */
-function Timeline({ index, onSeek }: { index: number; onSeek: (i: number) => void }) {
-  const n = VIDEO.frames.length;
+function Timeline({ video, alertAt, index, onSeek }: { video: ShowcaseVideo; alertAt: number; index: number; onSeek: (i: number) => void }) {
+  const n = video.frames.length;
   const left = (i: number) => `${(i / (n - 1)) * 100}%`;
   return (
     <div>
       <div className="relative h-16">
         <div className="absolute inset-x-0 border-t border-dashed border-muted-foreground/40" style={{ bottom: `${ALERT_THRESHOLD * 100}%` }} aria-hidden />
         <div className="absolute inset-0 flex items-end gap-px">
-          {VIDEO.frames.map((f) => (
+          {video.frames.map((f) => (
             <button key={f.i} type="button" onClick={() => onSeek(f.i)} aria-label={`${f.phase === "lead" ? "Earlier photo" : `Photo at ${clockOf(f.taken)}`}: ${pct(f.score)} smoke`}
               className="relative h-full flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span className={cn("absolute inset-x-0 bottom-0 rounded-t-[1px]", f.score >= ALERT_THRESHOLD ? "bg-fire" : "bg-clear/60", f.i > index && "opacity-30")}
@@ -51,8 +58,10 @@ function Timeline({ index, onSeek }: { index: number; onSeek: (i: number) => voi
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>Each bar is one photo. Taller means more likely smoke. Click a bar to jump there.</span>
-        {moments.alertAt >= 0 && (
-          <span className="shrink-0 text-foreground">Alert at {clockOf(VIDEO.frames[moments.alertAt].taken)}</span>
+        {alertAt >= 0 ? (
+          <span className="shrink-0 text-foreground">Alert at {clockOf(video.frames[alertAt].taken)}</span>
+        ) : (
+          <span className="shrink-0 text-foreground">No alert</span>
         )}
       </div>
     </div>
@@ -65,13 +74,18 @@ const NOTIFY = [
   { icon: Webhook, who: "Dispatch system", how: "automatic message" },
 ];
 
-export function LiveDetection() {
+/** Plays one scenario. Give it a `key` per scenario so switching starts fresh. */
+export function LiveDetection({ scenario }: { scenario: Scenario }) {
+  const VIDEO = scenario.video;
+  const moments = videoMoments(VIDEO, ALERT_THRESHOLD);
   const video = useRef<HTMLVideoElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const f = VIDEO.frames[index];
   const state = f.score >= 0.85 ? "fire" : f.score >= ALERT_THRESHOLD ? "suspect" : "clear";
   const alerted = moments.alertAt >= 0 && index >= moments.alertAt;
+  // Reached the end with smoke on screen and no alert: the model missed it.
+  const missed = moments.alertAt < 0 && moments.firstSmoke >= 0 && index === VIDEO.frames.length - 1;
 
   // While playing, follow the video's clock photo by photo.
   useEffect(() => {
@@ -84,7 +98,7 @@ export function LiveDetection() {
     };
     raf = requestAnimationFrame(follow);
     return () => cancelAnimationFrame(raf);
-  }, [playing]);
+  }, [playing, VIDEO]);
 
   const seek = (i: number) => {
     if (video.current) video.current.currentTime = (i + 0.5) / VIDEO.fps;
@@ -101,10 +115,10 @@ export function LiveDetection() {
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-3">
         <div className="relative overflow-hidden rounded-lg border bg-muted">
-          <video ref={video} src="/demo/showcase/video.mp4" muted playsInline preload="auto" className="block aspect-video w-full"
+          <video ref={video} src={scenario.src} muted playsInline preload="auto" className="block aspect-video w-full"
             onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
             aria-label={`Time-lapse from tower camera ${VIDEO.camera}`} />
-          <Overlay index={index} />
+          <Overlay video={VIDEO} index={index} marked={moments.alertAt < 0} />
           <StateChip state={state} className="absolute left-3 top-3" />
           <span className="absolute right-3 top-3 rounded-md bg-background/80 px-2 py-0.5 text-sm tabular-nums backdrop-blur-sm">
             {/* lead-in photos are from other days: a clock time would jump backwards */}
@@ -128,7 +142,7 @@ export function LiveDetection() {
             Start over
           </Button>
         </div>
-        <Timeline index={index} onSeek={seek} />
+        <Timeline video={VIDEO} alertAt={moments.alertAt} index={index} onSeek={seek} />
       </div>
 
       <div className="space-y-4">
@@ -150,11 +164,11 @@ export function LiveDetection() {
           </CardContent>
         </Card>
 
-        <Card className={cn("transition-colors", alerted && "border-fire/50 bg-fire/5")}>
+        <Card className={cn("transition-colors", alerted && "border-fire/50 bg-fire/5", missed && "border-dashed")}>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <BellRing className={cn("size-4", alerted ? "text-fire" : "text-muted-foreground")} />
-              {alerted ? "Alert sent" : "No alert yet"}
+              {alerted ? "Alert sent" : missed ? "Missed" : "No alert yet"}
             </CardTitle>
             <Badge variant="outline" className="text-muted-foreground">Demo</Badge>
           </CardHeader>
@@ -162,7 +176,9 @@ export function LiveDetection() {
             <p className="text-sm text-muted-foreground">
               {alerted
                 ? `Smoke showed in 2 of the last 3 photos, ${moments.detectMinutes !== null && moments.detectMinutes < 1 ? "less than a minute" : `${moments.detectMinutes?.toFixed(0)} minutes`} after it first appeared.`
-                : "An alert goes out when smoke shows in 2 of the last 3 photos."}
+                : missed
+                  ? "Smoke was there, but the model never scored it above 50% twice in a row, so no alert went out."
+                  : "An alert goes out when smoke shows in 2 of the last 3 photos."}
             </p>
             <ul className="space-y-2">
               {NOTIFY.map(({ icon: Icon, who, how }) => (

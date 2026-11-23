@@ -85,8 +85,9 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="EmberWatch" render={<Link href="/" />}>
-              <LogoMark className="size-7 shrink-0" />
-              <span className="font-semibold">EmberWatch</span>
+              {/* size-*! beats the menu button's default 16 px icon size; in icon mode the logo fills the 32 px button */}
+              <LogoMark className="size-7! shrink-0 group-data-[collapsible=icon]:size-8!" />
+              <span className="font-semibold group-data-[collapsible=icon]:hidden">EmberWatch</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

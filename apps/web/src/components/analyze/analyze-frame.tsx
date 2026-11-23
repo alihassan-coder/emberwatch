@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { ApiError, scoreFrame, type FrameScore } from "@/lib/api";
 import { pct } from "@/lib/format";
 
+/** Real frames from cameras the model never trained on, so a visitor can try it in one click. */
+const SAMPLES = [
+  { file: "gallery/caught/04.jpg", label: "Smoke beyond a town" },
+  { file: "gallery/ignored/06.jpg", label: "A cloud that looks like smoke" },
+  { file: "gallery/ignored/04.jpg", label: "Fog in the trees" },
+];
+
 type Status = { kind: "idle" } | { kind: "scoring" } | { kind: "done"; result: FrameScore } | { kind: "error"; message: string };
 
 /** Ember ramp shared with the camera frames: nothing below 30%, amber then red above. */
@@ -120,6 +127,11 @@ export function AnalyzeFrame() {
     }
   }, []);
 
+  const trySample = async (sample: (typeof SAMPLES)[number]) => {
+    const blob = await fetch(`/demo/showcase/${sample.file}`).then((r) => r.blob());
+    analyze(new File([blob], sample.label + ".jpg", { type: "image/jpeg" }));
+  };
+
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section aria-label="Frame">
@@ -154,12 +166,27 @@ export function AnalyzeFrame() {
             )}
           >
             <ImageUp className="size-10 text-contour" aria-hidden />
-            <span className="font-heading text-2xl font-semibold text-paper">Drop a camera frame here</span>
+            <span className="font-heading text-2xl font-semibold text-paper">Drop a camera photo here</span>
             <span className="max-w-sm text-sm text-contour">
-              Or click to choose one. JPEG or PNG, any size up to 15 MB. The frame is checked tile by tile, the
+              Or click to choose one. JPEG or PNG, any size up to 15 MB. The photo is checked tile by tile, the
               same way the live cameras are.
             </span>
           </label>
+        )}
+        {!preview && (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm text-muted-foreground">No photo to hand? Try a real one:</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {SAMPLES.map((s) => (
+                <button key={s.file} type="button" onClick={() => trySample(s)}
+                  className="group overflow-hidden rounded-lg border text-left outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- small static demo thumbnail */}
+                  <img src={`/demo/showcase/${s.file}`} alt="" className="aspect-video w-full object-cover" />
+                  <span className="block px-3 py-2 text-sm">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         <input
           ref={input}
@@ -194,7 +221,7 @@ export function AnalyzeFrame() {
         {preview && (
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
             <Button variant="outline" onClick={() => input.current?.click()}>
-              Analyze another frame
+              Check another photo
             </Button>
             {status.kind === "done" && (
               <Button variant="ghost" onClick={() => setShowTiles((s) => !s)} aria-pressed={showTiles}>

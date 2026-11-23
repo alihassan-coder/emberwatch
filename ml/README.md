@@ -18,11 +18,10 @@ This folder is where the smoke models are trained, measured and exported. The **
 |---|---|---|
 | `src/common/` | Small helpers every step uses | `env.py`: "where am I running, where do files go?" |
 | `src/data/` | One file per dataset. Each one downloads, checks, splits and packs its data | `pyro_sdis.py` (training data), `figlib.py` (real fire sequences) |
-| `src/models/` | Model definitions and experiments | `spike_e0.py`: tries 5 candidate models and compares them |
-| `src/train/` | Training loops *(next)* | — |
-| `src/evaluate/` | How we score a model | `metrics.py`: accuracy, minutes to detect, false alarms |
-| `src/export/` | Keras → ONNX, plus the "do they agree?" check *(next)* | — |
-| `configs/` | One settings file per experiment *(next)* | — |
+| `src/models/` | Model experiments | `spike_e0.py`: tried 5 candidate models and compared them |
+| `src/train/` | Training | `tile_classifier.py`: the E1 EfficientNet-B0 tile classifier |
+| `src/evaluate/` | How we score a model | `metrics.py` (accuracy, minutes to detect, false alarms), `figlib_ttd.py` (time to detect on real fires) |
+| `src/export/` | Keras → ONNX, the "do they agree?" check, and packing a model version for the API | `onnx_check.py`, `pack_model.py` |
 | `artifacts/` | Downloaded results (git-ignored) | `runs/<job>/` |
 
 ## Running things

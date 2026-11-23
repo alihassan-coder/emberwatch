@@ -1,28 +1,30 @@
 # EmberWatch web
 
-The operator console: Next.js 16 (App Router, Cache Components), Tailwind 4 and shadcn/ui (Base UI).
+The operator console: Next.js 16 (App Router, Cache Components), Tailwind 4 and shadcn/ui (Base UI), in the plain shadcn neutral theme.
 
 ```bash
 pnpm install
 pnpm dev          # http://localhost:3000
 ```
 
-It talks to the API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
+It talks to the API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). The sidebar shows whether the model is online.
 
 ## Pages
 
 | Route | What it's for |
 |---|---|
-| `/` Watch | Camera wall, Fire finder map (bearings cross at the location estimate), alerts needing review |
-| `/alerts` | Review one alert: each camera's view, a filmstrip around the first alert, confirm fire or "not a fire" with a reason |
-| `/analyze` | Upload any frame; the real API scores it and the page shows the per-tile smoke heatmap |
-| `/model` | Results against targets, training data, known limits. A result shows as "training" until a run produces it |
+| `/` How it works | The idea in three steps, then real tower footage to play: smoke behind a town, a fire on a forest ridge, and a faint plume the model misses |
+| `/cameras` | Six real towers replaying one day, each with its smoke score, plus the alerts that need review |
+| `/alerts` | Review an alert: each camera's view, every photo so far, the fire finder map where bearings cross, confirm or dismiss with a reason |
+| `/results` | Measured accuracy against targets, and "Try to fool it": clouds and fog it ignores, smoke it catches, smoke it misses |
+| `/analyze` Check a photo | Upload any photo (or pick a sample); the real API scores it and the page shows the per-tile smoke scores |
 
-Watch and Alerts run on a fixed demo scenario (`src/lib/demo-data.ts`) until the replay service exists; the header labels it "Replay demo". Frames are drawn ridge-line scenes, because HPWREN imagery can't be redistributed.
+## How the demos work
 
-## Design
+- **How it works** plays short videos built by `ml/src/data/showcase.py` from Pyro-SDIS footage, scored by the real model. Each video's photo-by-photo scores are in `src/data/demo/scenarios/<id>.json`, and the page syncs them to playback.
+- **Cameras** and **Alerts** run a replay in the browser (`src/lib/replay/`): a pure `snapshotAt(timeline, step, reviews)` function decides what each camera shows and which alerts exist, so the same moment always looks the same. The photos and scores come from `src/data/demo/manifest.json`.
+- **Check a photo** is the one page that calls the API.
 
-- **Palette "Spruce dusk":** a coloured night-ridge base for 24/7 watch shifts.
-- **Colours mean states:** sage is clear, amber is possible smoke, red is confirmed fire.
-- **Type:** Barlow, modelled on California road signs.
-- **Signature element:** the Fire finder, named after the lookout tower's Osborne Fire Finder.
+## Images
+
+Camera photos are from [Pyro-SDIS](https://huggingface.co/datasets/pyronear/pyro-sdis) (Pyronear and the French SDIS fire services, Apache-2.0), resized for the web. See `public/demo/*/ATTRIBUTION.md`.

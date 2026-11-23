@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- EmberWatch: an ember rising from a mountain ridge, spotted from a tower -->
+  <!-- EmberWatch: a watching eye whose pupil is an ember -->
   <rect width="32" height="32" rx="8" fill="#171717"/>
-  <path d="M3 25 L11.5 14.5 L15.5 19 L20.5 12.5 L29 25 Z" fill="#ffffff"/>
-  <path d="M20.5 3.5 C23.6 6.6 24.2 9 23 10.9 C22.2 12.1 20.3 12.3 19.4 11.3 C18.3 10.1 18.8 8.4 19.9 7.3 C19.8 8.7 20.6 9.3 21.4 8.9 C22.4 8.3 22.1 6.2 20.5 3.5 Z" fill="#ef4444"/>
+  <path d="M3 17 C7.8 9.2 24.2 9.2 29 17 C24.2 24.8 7.8 24.8 3 17 Z" fill="#ffffff"/>
+  <circle cx="16" cy="17" r="5.9" fill="#171717"/>
+  <path d="M16 11.3 C18.7 13.7 19.6 15.8 19.1 17.8 C18.6 19.6 17.4 20.6 16 20.6 C14.6 20.6 13.4 19.6 12.9 17.8 C12.6 16.3 13.3 14.9 14.3 14.2 C14.3 15.7 15 16.4 15.7 16.4 C16.2 14.9 16.3 13.2 16 11.3 Z" fill="#ef4444"/>
 </svg>

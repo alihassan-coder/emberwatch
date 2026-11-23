@@ -3,8 +3,7 @@ import Link from "next/link";
 import { Camera, ScanSearch, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LiveDetection } from "@/components/live/live-detection";
-import { VIDEO } from "@/lib/showcase";
+import { ScenarioPlayer } from "@/components/live/scenario-player";
 
 export const metadata: Metadata = { title: "How it works" };
 
@@ -45,12 +44,10 @@ export default function HowItWorksPage() {
         <div className="space-y-1">
           <h2 id="demo-title" className="text-xl font-semibold">See it on real footage</h2>
           <p className="text-sm text-muted-foreground">
-            A real tower camera ({VIDEO.camera}) looking out over a town. The model never saw this camera while
-            training. Press play: the view is clear, then smoke rises beyond the town, the model spots it, and the
-            alert goes out.
+            Three real recordings from French fire-watch towers. Pick one and press play.
           </p>
         </div>
-        <LiveDetection />
+        <ScenarioPlayer />
       </section>
 
       <div className="flex flex-wrap gap-2 border-t pt-6">
