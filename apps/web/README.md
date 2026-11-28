@@ -23,13 +23,13 @@ It talks to the API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). 
 
 - **How it works** plays short videos built by `ml/src/data/showcase.py` from Pyro-SDIS footage, scored by the real model. Each video's photo-by-photo scores are in `src/data/demo/scenarios/<id>.json`, and the page syncs them to playback.
 - **Cameras** and **Alerts** run a replay in the browser (`src/lib/replay/`), so the demo works without the API. A pure `snapshotAt(timeline, step, reviews)` function decides what each camera shows and which alerts exist, so the same moment always looks the same. Its alert rules are a port of the API's (`apps/api/src/services/alerts.py`), and a contract test pins both to `src/data/demo/expected_alerts.json`, so the browser and the backend always raise the same alerts.
+- **Check a photo** is the one page that calls the API.
 
 ## Tests
 
 ```bash
 pnpm test        # Vitest: replay engine, event log, geometry, demo scenarios, contract with the API
 ```
-- **Check a photo** is the one page that calls the API.
 
 ## Images
 
