@@ -3,10 +3,10 @@ revision = 5
 requires-python = ">=3.12, <3.14"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'win32'",
-    "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version >= '3.13' and sys_platform == 'emscripten'",
-    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version >= '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -207,6 +207,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+eval = [
+    { name = "onnxruntime" },
+]
 train = [
     { name = "jax", extra = ["cuda12"] },
     { name = "jax2onnx" },
@@ -225,12 +228,13 @@ requires-dist = [
     { name = "keras-hub", marker = "extra == 'train'", specifier = "==0.33.0" },
     { name = "numpy", specifier = ">=2.5.5" },
     { name = "onnx", marker = "extra == 'train'", specifier = ">=1.23.2" },
+    { name = "onnxruntime", marker = "extra == 'eval'", specifier = ">=1.32.0" },
     { name = "onnxruntime", marker = "extra == 'train'", specifier = ">=1.32.0" },
     { name = "pandas", specifier = ">=3.1.1" },
     { name = "pillow", specifier = ">=13.0.0" },
     { name = "pyarrow", specifier = ">=26.0.1" },
 ]
-provides-extras = ["train"]
+provides-extras = ["eval", "train"]
 
 [[package]]
 name = "equinox"

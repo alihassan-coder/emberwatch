@@ -43,6 +43,8 @@ const VERDICT = {
 
 function Readout({ result }: { result: FrameScore }) {
   const hot = result.tiles.filter((t) => t.probability >= ALERT_THRESHOLD).length;
+  const whole = result.whole_photo ?? null;
+  const bestTile = Math.max(0, ...result.tiles.map((t) => t.probability));
   const state = result.score >= 0.85 ? "fire" : result.score >= ALERT_THRESHOLD ? "suspect" : "clear";
   const v = VERDICT[state];
   return (
@@ -52,7 +54,9 @@ function Readout({ result }: { result: FrameScore }) {
         <p className="mt-1 text-sm text-muted-foreground">
           {hot > 0
             ? `${hot} of ${result.tiles.length} parts of the photo look like smoke. They are outlined in red.`
-            : `All ${result.tiles.length} parts of the photo stayed below the 50% line.`}
+            : whole !== null && whole >= ALERT_THRESHOLD
+              ? "No single part stands out, but the photo as a whole looks like smoke: it fills the picture."
+              : `All ${result.tiles.length} parts of the photo stayed below the 50% line.`}
         </p>
       </div>
 
@@ -89,6 +93,18 @@ function Readout({ result }: { result: FrameScore }) {
           <dt className="text-muted-foreground">Tiles checked</dt>
           <dd className="text-foreground">{result.tiles.length}</dd>
         </div>
+        {whole !== null && (
+          <>
+            <div>
+              <dt className="text-muted-foreground">Best part</dt>
+              <dd className="text-foreground tabular-nums">{pct(bestTile)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Whole photo</dt>
+              <dd className="text-foreground tabular-nums">{pct(whole)}</dd>
+            </div>
+          </>
+        )}
       </dl>
     </div>
   );

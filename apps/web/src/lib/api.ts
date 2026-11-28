@@ -23,6 +23,8 @@ export type FrameScore = {
   model_name: string;
   model_version: string;
   latency_ms: number;
+  /** The whole photo scored at once (E2+ models); null for tile-only models. */
+  whole_photo?: number | null;
 };
 
 /** Thrown when the API can't be reached or rejects a request; `message` is shown to the user. */
