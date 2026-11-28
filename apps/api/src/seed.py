@@ -47,6 +47,32 @@ def reset(session) -> None:
     session.commit()
 
 
+def load_demo(session, manifest: dict, version: ModelVersion) -> list[Alert]:
+    """Feed the demo day through the alert pipeline, as if live. Returns the alerts, oldest first.
+
+    The web app's browser replay runs the same rules on the same manifest, and
+    both are pinned to apps/web/src/data/demo/expected_alerts.json by tests.
+    """
+    sites = {key: Site(key=key, name=name, lat=lat, lon=lon, position_approximate=True)
+             for key, (name, lat, lon) in SITES.items()}
+    session.add_all(sites.values())
+    cameras = {c["id"]: Camera(key=c["id"], site=sites[c["site"]], heading=c["heading"], fov=87.0)
+               for c in manifest["cameras"]}
+    session.add_all(cameras.values())
+    session.flush()
+
+    # Feed every frame in the order the cameras took them, as if live.
+    frames = sorted(((c["id"], f) for c in manifest["cameras"] for f in c["frames"]), key=lambda x: x[1]["taken"])
+    for cam_key, f in frames:
+        frame = Frame(camera=cameras[cam_key], taken_at=taken_at(f["taken"]), score=f["score"], tiles=f["tiles"],
+                      image_path=f"web:/demo/{f['file']}", model_version=version)
+        session.add(frame)
+        session.flush()
+        process_frame(session, cameras[cam_key], frame)
+    session.flush()
+    return list(session.scalars(select(Alert).order_by(Alert.id)))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Load the real demo day")
     ap.add_argument("--reset", action="store_true", help="delete existing alerts, frames and cameras first")
@@ -68,30 +94,11 @@ def main() -> None:
                                    threshold=float(stored.spec["threshold"]))
             session.add(version)
 
-        sites = {key: Site(key=key, name=name, lat=lat, lon=lon, position_approximate=True)
-                 for key, (name, lat, lon) in SITES.items()}
-        session.add_all(sites.values())
-        cameras = {c["id"]: Camera(key=c["id"], site=sites[c["site"]], heading=c["heading"], fov=87.0)
-                   for c in manifest["cameras"]}
-        session.add_all(cameras.values())
-        session.flush()
-
-        # Feed every frame in the order the cameras took them, as if live.
-        frames = sorted(((c["id"], f) for c in manifest["cameras"] for f in c["frames"]), key=lambda x: x[1]["taken"])
-        raised = set()
-        for cam_key, f in frames:
-            frame = Frame(camera=cameras[cam_key], taken_at=taken_at(f["taken"]), score=f["score"], tiles=f["tiles"],
-                          image_path=f"web:/demo/{f['file']}", model_version=version)
-            session.add(frame)
-            session.flush()
-            alert = process_frame(session, cameras[cam_key], frame)
-            if alert and alert.code not in raised:
-                raised.add(alert.code)
-                print(f"  {frame.taken_at:%Y-%m-%d %H:%M} UTC  {cam_key:15} -> {alert.code}")
+        alerts = load_demo(session, manifest, version)
         session.commit()
-
-        print(f"Loaded {len(sites)} sites, {len(cameras)} cameras, {len(frames)} frames, {len(raised)} alerts.")
-        for a in session.scalars(select(Alert).order_by(Alert.raised_at)):
+        n_frames = sum(len(c["frames"]) for c in manifest["cameras"])
+        print(f"Loaded {len(SITES)} sites, {len(manifest['cameras'])} cameras, {n_frames} frames, {len(alerts)} alerts.")
+        for a in alerts:
             where = f"{a.lat:.3f}, {a.lon:.3f}" if a.lat is not None else "no location (one site)"
             print(f"  {a.code}: {', '.join(link.camera.key for link in a.cameras)} | peak {a.peak_score:.2f} | {where}")
 

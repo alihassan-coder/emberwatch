@@ -45,8 +45,9 @@ export function crossBearings(a: LatLon, bearingA: number, b: LatLon, bearingB: 
   const dbx = Math.sin(toRad(bearingB)), dby = Math.cos(toRad(bearingB));
   const det = dax * -dby - day * -dbx;
   if (Math.abs(det) < 1e-6) return null;
-  const t = (bx * -dby - by * -dbx) / det;
-  if (t < 0) return null; // crossing is behind camera a
+  const t = (bx * -dby - by * -dbx) / det; // distance along line a
+  const u = (dax * by - day * bx) / det;    // distance along line b
+  if (t < 0 || u < 0) return null; // the lines cross behind a camera (same rule as apps/api/src/services/geo.py)
   return { lat: a.lat + (t * day) / ky, lon: a.lon + (t * dax) / kx };
 }
 

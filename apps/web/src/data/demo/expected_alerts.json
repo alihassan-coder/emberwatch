@@ -1,0 +1,43 @@
+[
+  {
+    "code": "A-2611",
+    "cameras": [
+      "ferion-142"
+    ],
+    "bearings": [
+      149.2
+    ],
+    "raised_at": "2024-01-08T11-57-19",
+    "location": null,
+    "peak_score": 0.9981
+  },
+  {
+    "code": "A-2612",
+    "cameras": [
+      "cabanelle-244",
+      "valbonne-349"
+    ],
+    "bearings": [
+      279.9,
+      341.8
+    ],
+    "raised_at": "2024-01-08T12-03-11",
+    "location": [
+      43.852,
+      6.913
+    ],
+    "peak_score": 0.9998
+  },
+  {
+    "code": "A-2613",
+    "cameras": [
+      "courmettes-212"
+    ],
+    "bearings": [
+      176.1
+    ],
+    "raised_at": "2024-01-08T12-16-42",
+    "location": null,
+    "peak_score": 0.9999
+  }
+]
