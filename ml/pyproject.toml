@@ -36,3 +36,22 @@ train = [
 # On Kaggle the same deps install with:
 #   uv pip install -r pyproject.toml [--extra train]
 package = false
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import order, bugbear, pyupgrade, simplify
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+# Run from ml/:  uv run pytest   (fast, no GPU, no datasets needed)
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

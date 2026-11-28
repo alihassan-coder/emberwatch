@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-from src.common.env import ON_KAGGLE, ML_ROOT
+from src.common.env import ML_ROOT, ON_KAGGLE
 
 KAGGLE_SLUG = "sayedgamal99/smoke-fire-detection-yolo"
 SPLITS = {"train": "train", "val": "val", "test": "test"}

@@ -57,7 +57,11 @@ def export_and_check(model, sample: np.ndarray, path: Path, latency_runs: int = 
     started = time.time()
     model.export(str(path), format="onnx")
     merged = _merge_external_data(path)
-    report = {"merged_external_data_files": merged, "export_s": round(time.time() - started, 1), "onnx_mb": round(path.stat().st_size / 1e6, 1)}
+    report = {
+        "merged_external_data_files": merged,
+        "export_s": round(time.time() - started, 1),
+        "onnx_mb": round(path.stat().st_size / 1e6, 1),
+    }
 
     options = ort.SessionOptions()
     options.intra_op_num_threads = 4

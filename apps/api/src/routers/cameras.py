@@ -45,7 +45,10 @@ def recent_frames(key: str, limit: int = Query(default=20, le=200), session: Ses
         select(Frame).where(Frame.camera_id == camera.id).options(selectinload(Frame.model_version))
         .order_by(Frame.taken_at.desc()).limit(limit)
     )
-    return [FrameOut(id=f.id, taken_at=f.taken_at, score=f.score, model_version=f.model_version.version if f.model_version else None) for f in frames]
+    return [
+        FrameOut(id=f.id, taken_at=f.taken_at, score=f.score, model_version=f.model_version.version if f.model_version else None)
+        for f in frames
+    ]
 
 
 @router.post("/{key}/frames", response_model=FrameIngested, status_code=201)
@@ -66,15 +69,17 @@ async def ingest_frame(
     try:
         with Image.open(io.BytesIO(raw)) as img:
             pixels = np.asarray(img.convert("RGB"))
-    except UnidentifiedImageError:
-        raise HTTPException(status_code=415, detail="Not a readable image (send JPEG or PNG)")
+    except UnidentifiedImageError as err:
+        raise HTTPException(status_code=415, detail="Not a readable image (send JPEG or PNG)") from err
 
     model = request.app.state.model
     result = await run_in_threadpool(model.score, pixels)
 
     path = FRAMES_DIR / key / f"{taken_at:%Y%m%dT%H%M%S}.jpg"
     frame = Frame(
-        camera=camera, taken_at=taken_at, score=result.score,
+        camera=camera,
+        taken_at=taken_at,
+        score=result.score,
         tiles=[{"x": t.x, "y": t.y, "size": t.size, "p": round(t.probability, 4)} for t in result.tiles],
         # Relative to apps/api when stored there, absolute otherwise (e.g. a separate data disk).
         image_path=str(path.relative_to(API_ROOT) if path.is_relative_to(API_ROOT) else path),
@@ -83,9 +88,9 @@ async def ingest_frame(
     session.add(frame)
     try:
         session.flush()
-    except IntegrityError:
+    except IntegrityError as err:
         session.rollback()
-        raise HTTPException(status_code=409, detail=f"{key} already has a photo taken at {taken_at.isoformat()}")
+        raise HTTPException(status_code=409, detail=f"{key} already has a photo taken at {taken_at.isoformat()}") from err
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(raw)
 

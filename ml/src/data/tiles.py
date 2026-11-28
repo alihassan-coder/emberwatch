@@ -26,7 +26,7 @@ class TileLayout:
     cols: int = 6  # 6 x 224 = 1344 > 1280, so columns overlap a little
 
     @classmethod
-    def for_frame(cls, frame_h: int, frame_w: int, tile: int = 224) -> "TileLayout":
+    def for_frame(cls, frame_h: int, frame_w: int, tile: int = 224) -> TileLayout:
         """Layout for any frame size: ceil(side / tile) tiles per side, overlapping evenly.
 
         1280x720 gives the 6x4 grid used in training; a 1280x960 FIgLib

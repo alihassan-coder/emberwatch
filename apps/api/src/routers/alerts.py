@@ -26,7 +26,10 @@ def alert_out(alert: Alert) -> AlertOut:
         raised_at=alert.raised_at,
         peak_score=alert.peak_score,
         location={"lat": alert.lat, "lon": alert.lon} if alert.lat is not None else None,
-        cameras=[AlertCameraOut(camera=l.camera.key, site=l.camera.site.name, bearing=round(l.bearing, 1)) for l in alert.cameras],
+        cameras=[
+            AlertCameraOut(camera=link.camera.key, site=link.camera.site.name, bearing=round(link.bearing, 1))
+            for link in alert.cameras
+        ],
         reviews=[ReviewOut.model_validate(r) for r in alert.reviews],
     )
 

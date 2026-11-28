@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import io
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -98,7 +97,7 @@ def score(frame: np.ndarray, spec: dict, session) -> tuple[float, list[dict]]:
     probs = 1 / (1 + np.exp(-logits))
     tiles = [
         {"x": round(x * SCALE), "y": round(y * SCALE), "size": round(layout.tile * SCALE), "p": round(float(p), 4)}
-        for (y, x), p in zip(layout.origins(), probs)
+        for (y, x), p in zip(layout.origins(), probs, strict=True)
     ]
     return round(float(probs.max()), 4), tiles
 

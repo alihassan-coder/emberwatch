@@ -32,7 +32,7 @@ def pack(src_dir: Path, out_dir: Path, prefix: str, shard_bytes: int = SHARD_BYT
                     tar.close()
                     shard_no += 1
                 name = f"{prefix}-{shard_no:03d}.tar"
-                tar = tarfile.open(out_dir / name, "w")
+                tar = tarfile.open(out_dir / name, "w")  # noqa: SIM115 - stays open across files, closed above and at the end
                 size = 0
             rel = path.relative_to(src_dir).as_posix()
             tar.add(path, arcname=rel)

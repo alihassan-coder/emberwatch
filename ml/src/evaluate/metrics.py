@@ -18,7 +18,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
 # ── Box level ──────────────────────────────────────────────────────────────
 
 def iou_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -168,7 +167,9 @@ def sequence_metrics(sequences: list[dict], within_minutes: float = 10.0) -> dic
         "event_recall": len(ttds) / n_events if n_events else float("nan"),
         "ttd_mean_min": float(ttds.mean()) if len(ttds) else None,
         "ttd_median_min": float(np.median(ttds)) if len(ttds) else None,
-        f"detected_within_{int(within_minutes)}_min": float((ttds <= within_minutes).sum() / n_events) if n_events else float("nan"),
+        f"detected_within_{int(within_minutes)}_min": float((ttds <= within_minutes).sum() / n_events)
+        if n_events
+        else float("nan"),
         "false_alarms": false_alarms,
         "camera_days": round(camera_days, 3),
         "false_alarms_per_camera_day": false_alarms / camera_days if camera_days else None,

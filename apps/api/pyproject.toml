@@ -28,3 +28,23 @@ dev = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import order, bugbear, pyupgrade, simplify
+select = ["E", "F", "I", "B", "UP", "SIM"]
+# (str, Enum) kept over StrEnum: str() of the members is part of stored/printed values today.
+ignore = ["UP042"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's Depends()/File()/Query() in defaults is the framework's documented style.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query", "fastapi.Path"]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*" = ["E501"]   # written by alembic autogenerate
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = false

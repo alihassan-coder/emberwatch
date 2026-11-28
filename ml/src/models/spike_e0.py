@@ -78,7 +78,9 @@ def load_detection_sample(n: int) -> tuple[np.ndarray, dict, list[np.ndarray]]:
             for i, (y1, x1, y2, x2) in enumerate(list(r["boxes_yxyx_abs"])[:MAX_BOXES]):
                 b[i] = [y1 * scale + py, x1 * scale + px, y2 * scale + py, x2 * scale + px]
                 lab[i] = 0
-            images.append(arr); boxes.append(b); labels.append(lab)
+            images.append(arr)
+            boxes.append(b)
+            labels.append(lab)
             crops.append(arr)
     x = np.stack(images).astype(np.float32)
     y = {"boxes": np.stack(boxes), "labels": np.stack(labels)}
@@ -89,7 +91,7 @@ def tiles_from(x: np.ndarray, y: dict) -> tuple[np.ndarray, np.ndarray]:
     """224 crops: centred on a smoke box (label 1) or random (label 0) for classifier spikes."""
     rng = np.random.default_rng(0)
     tiles, labels = [], []
-    for img, bxs in zip(x, y["boxes"]):
+    for img, bxs in zip(x, y["boxes"], strict=True):
         valid = bxs[bxs[:, 0] >= 0]
         if len(valid):
             y1, x1, y2, x2 = valid[0]
@@ -101,7 +103,8 @@ def tiles_from(x: np.ndarray, y: dict) -> tuple[np.ndarray, np.ndarray]:
             label = 0
         top = int(np.clip(cy - TILE_SIZE // 2, 0, img.shape[0] - TILE_SIZE))
         left = int(np.clip(cx - TILE_SIZE // 2, 0, img.shape[1] - TILE_SIZE))
-        tiles.append(img[top:top + TILE_SIZE, left:left + TILE_SIZE]); labels.append(label)
+        tiles.append(img[top:top + TILE_SIZE, left:left + TILE_SIZE])
+        labels.append(label)
     return np.stack(tiles).astype(np.float32), np.array(labels, dtype=np.int32)
 
 
@@ -254,8 +257,14 @@ def main() -> None:
 
     out = output_dir() / "spike_e0"
     out.mkdir(parents=True, exist_ok=True)
-    env = {"det_input": f"{DET_W}x{DET_H}", "backend": keras.backend.backend(), "keras": keras.__version__, "keras_hub": keras_hub.__version__,
-           "jax": jax.__version__, "gpus": [str(d) for d in jax.devices()]}
+    env = {
+        "det_input": f"{DET_W}x{DET_H}",
+        "backend": keras.backend.backend(),
+        "keras": keras.__version__,
+        "keras_hub": keras_hub.__version__,
+        "jax": jax.__version__,
+        "gpus": [str(d) for d in jax.devices()],
+    }
     print("env:", env, flush=True)
 
     det_x, det_y, _ = load_detection_sample(args.images)

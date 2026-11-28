@@ -1,0 +1,76 @@
+# Checks every push and pull request. The three projects are independent
+# (docs/decisions/0001), so each gets its own job and they run in parallel.
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (lint, migrations, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      EMBERWATCH_DATABASE_URL: sqlite:///ci.db
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+      - run: uv sync --locked
+      - run: uvx ruff@0.17.6 check .
+      - name: Migrations build the schema the models describe
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+      - run: uv run pytest
+
+  ml:
+    name: ML (lint, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: ml/uv.lock
+      # Only the base dependencies: training needs a GPU and runs on Kaggle (docs/decisions/0002).
+      - run: uv sync --locked
+      - run: uvx ruff@0.17.6 check .
+      - run: uv run pytest
+
+  web:
+    name: Web (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm build

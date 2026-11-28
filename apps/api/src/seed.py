@@ -93,7 +93,7 @@ def main() -> None:
         print(f"Loaded {len(sites)} sites, {len(cameras)} cameras, {len(frames)} frames, {len(raised)} alerts.")
         for a in session.scalars(select(Alert).order_by(Alert.raised_at)):
             where = f"{a.lat:.3f}, {a.lon:.3f}" if a.lat is not None else "no location (one site)"
-            print(f"  {a.code}: {', '.join(l.camera.key for l in a.cameras)} | peak {a.peak_score:.2f} | {where}")
+            print(f"  {a.code}: {', '.join(link.camera.key for link in a.cameras)} | peak {a.peak_score:.2f} | {where}")
 
 
 if __name__ == "__main__":

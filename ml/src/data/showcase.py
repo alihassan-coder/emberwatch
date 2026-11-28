@@ -86,7 +86,7 @@ def longest_sequence(v1: pd.DataFrame) -> pd.DataFrame:
     """The longest run of frames from one camera with no gap over 3 minutes."""
     v1 = v1.assign(t=pd.to_datetime(v1["date"], format="%Y-%m-%dT%H-%M-%S")).sort_values(["camera", "t"])
     best = None
-    for cam, g in v1.groupby("camera"):
+    for _cam, g in v1.groupby("camera"):
         run_id = (g["t"].diff() > pd.Timedelta(minutes=3)).cumsum()
         for _, run in g.groupby(run_id):
             if best is None or len(run) > len(best):
@@ -108,7 +108,9 @@ def load_v1_images(rows: pd.DataFrame) -> dict[str, bytes]:
     return found
 
 
-def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: str | None = None, lead_in: int = CLEAR_LEAD_IN) -> dict:
+def build_video(
+    out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: str | None = None, lead_in: int = CLEAR_LEAD_IN
+) -> dict:
     # Only cameras with smoke-free frames qualify: the video must open before
     # the smoke, so viewers see the moment it appears (cabanelle-327, the
     # first pick, has none and the video started mid-fire).
@@ -121,8 +123,9 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
         seq = longest_sequence(v1)
         cam = seq["camera"].iloc[0]
         images = load_v1_images(seq)
-        smoke_sources = [("smoke", r.image_name, images[r.image_name], r.annotations, None)
-                         for r in seq.itertuples() if r.image_name in images]
+        smoke_sources = [
+            ("smoke", r.image_name, images[r.image_name], r.annotations, None) for r in seq.itertuples() if r.image_name in images
+        ]
     else:
         # The camera is newer than v1.0 (e.g. the Nemours town cameras, added in
         # 2025): use its v2.0 frames from its busiest smoke day instead. v2.0 keeps
@@ -131,8 +134,10 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
         own = v2[(v2["camera"] == cam) & v2["has_smoke"]].assign(day=lambda d: d["date"].str[:10])
         day = own["day"].value_counts().idxmax()
         rows = own[own["day"] == day].sort_values("date")
-        smoke_sources = [("smoke", r.image_name, (v2_images / r.image_name).read_bytes(), None, list(r.boxes_cxcywh_norm))
-                         for r in rows.itertuples()]
+        smoke_sources = [
+            ("smoke", r.image_name, (v2_images / r.image_name).read_bytes(), None, list(r.boxes_cxcywh_norm))
+            for r in rows.itertuples()
+        ]
         fps = 2
         print(f"[video] {cam} not in v1.0: using {len(rows)} v2.0 frames from {day}", flush=True)
 
@@ -154,7 +159,13 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
             fixed = "\n".join("0 " + " ".join(line.split()[1:]) for line in ann.strip().splitlines() if line.split())
             norm, _ = parse_yolo(fixed)
             boxes = [[round(v * SCALE, 1) for v in to_yxyx(b, *full.size)] for b in norm]
-        entry = {"i": i, "taken": name.rsplit("_", 1)[-1].removesuffix(".jpg"), "phase": phase, "smoke": bool(boxes), "boxes": boxes}
+        entry = {
+            "i": i,
+            "taken": name.rsplit("_", 1)[-1].removesuffix(".jpg"),
+            "phase": phase,
+            "smoke": bool(boxes),
+            "boxes": boxes,
+        }
         if scorer:
             entry["score"], entry["tiles"] = score(np.asarray(full), *scorer)
         timeline.append(entry)
@@ -165,14 +176,38 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
         print("[video] ffmpeg not found: wrote frames instead of an MP4", flush=True)
     else:
         subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(frames_dir / "%04d.jpg"),
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "26", "-movflags", "+faststart", str(out / "video.mp4")],
-        check=True,
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-framerate",
+                str(fps),
+                "-i",
+                str(frames_dir / "%04d.jpg"),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "26",
+                "-movflags",
+                "+faststart",
+                str(out / "video.mp4"),
+            ],
+            check=True,
         )
     smoke_times = pd.to_datetime([e["taken"] for e in timeline if e["phase"] == "smoke"], format="%Y-%m-%dT%H-%M-%S")
     gap = float(pd.Series(smoke_times).diff().dt.total_seconds().median()) if len(smoke_times) > 1 else 30.0
-    meta = {"camera": cam, "site": cam.split("-")[0], "heading": int(cam.rsplit("-", 1)[1]), "fps": fps,
-            "seconds_per_frame_real": round(gap), "frame_size": [OUT_W, OUT_H], "frames": timeline}
+    meta = {
+        "camera": cam,
+        "site": cam.split("-")[0],
+        "heading": int(cam.rsplit("-", 1)[1]),
+        "fps": fps,
+        "seconds_per_frame_real": round(gap),
+        "frame_size": [OUT_W, OUT_H],
+        "frames": timeline,
+    }
     (out / "video.json").write_text(json.dumps(meta, indent=1))
     size = (out / "video.mp4").stat().st_size / 1e6 if (out / "video.mp4").exists() else 0
     print(f"[video] {len(timeline)} frames, video {size:.1f} MB", flush=True)
@@ -180,6 +215,7 @@ def build_video(out: Path, scorer, v2: pd.DataFrame, v2_images: Path, camera: st
 
 
 # ── Gallery from v2.0 test sites ────────────────────────────────────────────
+
 
 def build_gallery(out: Path, scorer, v2: pd.DataFrame, images: Path) -> dict:
     test = v2[v2["split"] == "test"].copy()
@@ -208,11 +244,17 @@ def build_gallery(out: Path, scorer, v2: pd.DataFrame, images: Path) -> dict:
             rel = f"gallery/{kind}/{i:02d}.jpg"
             (out / rel).parent.mkdir(parents=True, exist_ok=True)
             (out / rel).write_bytes(jpeg(Image.open(images / r.image_name).convert("RGB")))
-            items.append({
-                "file": rel, "camera": r.camera, "taken": r.date, "score": r.score, "tiles": r.tiles,
-                "boxes": [[round(v * SCALE, 1) for v in b] for b in r.boxes_yxyx_abs],
-                "smoke_area_pct": round(float(r.area) * 100, 3) if r.has_smoke else None,
-            })
+            items.append(
+                {
+                    "file": rel,
+                    "camera": r.camera,
+                    "taken": r.date,
+                    "score": r.score,
+                    "tiles": r.tiles,
+                    "boxes": [[round(v * SCALE, 1) for v in b] for b in r.boxes_yxyx_abs],
+                    "smoke_area_pct": round(float(r.area) * 100, 3) if r.has_smoke else None,
+                }
+            )
         gallery[kind] = items
         print(f"[gallery] {kind}: {len(items)}", flush=True)
     (out / "gallery.json").write_text(json.dumps(gallery, indent=1))
@@ -238,7 +280,7 @@ def main() -> None:
     out = output_dir() / "showcase"
     out.mkdir(parents=True, exist_ok=True)
     if not args.video_only:
-        build_gallery(out, scorer, v2, images)   # cheap first
+        build_gallery(out, scorer, v2, images)  # cheap first
     build_video(out, scorer, v2, images, args.camera, args.lead_in)  # needs the 3.3 GB v1.0 download
     (out / "ATTRIBUTION.md").write_text(ATTRIBUTION.replace("v2.0 (", "v1.0 and v2.0 ("))
     (out / "meta.json").write_text(json.dumps({"git_sha": git_sha(), "model": scorer[0]["version"]}, indent=1))

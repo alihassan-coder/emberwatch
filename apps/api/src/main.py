@@ -43,9 +43,13 @@ def schema_version() -> str | None:
 def register_model(stored: model_registry.StoredModel) -> int:
     """Record the served model version in the database (once) and return its id."""
     with new_session() as session:
-        row = session.scalar(select(ModelVersion).where(ModelVersion.name == stored.spec["name"], ModelVersion.version == stored.version))
+        row = session.scalar(
+            select(ModelVersion).where(ModelVersion.name == stored.spec["name"], ModelVersion.version == stored.version)
+        )
         if row is None:
-            row = ModelVersion(name=stored.spec["name"], version=stored.version, sha256=stored.sha256, threshold=float(stored.spec["threshold"]))
+            row = ModelVersion(
+                name=stored.spec["name"], version=stored.version, sha256=stored.sha256, threshold=float(stored.spec["threshold"])
+            )
             session.add(row)
             session.commit()
         return row.id
@@ -55,7 +59,7 @@ def register_model(stored: model_registry.StoredModel) -> int:
 async def lifespan(app: FastAPI):
     if schema_version() is None:
         raise RuntimeError("The database has no schema yet. Run: uv run alembic upgrade head")
-    stored = model_registry.load(model_registry.active_version())   # refuses a damaged model file
+    stored = model_registry.load(model_registry.active_version())  # refuses a damaged model file
     app.state.model = SmokeModel(stored.path, load_settings().onnx_threads, version=stored.version)
     app.state.model_version_id = register_model(stored)
     yield
@@ -81,8 +85,14 @@ app.include_router(notifications.router)
 @app.get("/health", response_model=Health, tags=["system"])
 def health(request: Request) -> Health:
     model: SmokeModel = request.app.state.model
-    return Health(status="ok", model_name=model.name, model_version=model.version, threshold=model.threshold,
-                  database=get_engine().dialect.name, schema_version=schema_version())
+    return Health(
+        status="ok",
+        model_name=model.name,
+        model_version=model.version,
+        threshold=model.threshold,
+        database=get_engine().dialect.name,
+        schema_version=schema_version(),
+    )
 
 
 class ModelVersionOut(BaseModel):
@@ -97,8 +107,16 @@ class ModelVersionOut(BaseModel):
 def list_models(request: Request) -> list[ModelVersionOut]:
     """Model versions in the local store, and which one is being served."""
     serving = request.app.state.model.version
-    return [ModelVersionOut(version=m.version, name=m.spec["name"], threshold=float(m.spec["threshold"]), sha256=m.sha256,
-                            active=m.version == serving) for m in model_registry.list_versions()]
+    return [
+        ModelVersionOut(
+            version=m.version,
+            name=m.spec["name"],
+            threshold=float(m.spec["threshold"]),
+            sha256=m.sha256,
+            active=m.version == serving,
+        )
+        for m in model_registry.list_versions()
+    ]
 
 
 @app.post("/v1/frames/score", response_model=FrameScore, tags=["detection"])
@@ -110,14 +128,21 @@ async def score_frame(request: Request, image: UploadFile = File(description="A 
     try:
         with Image.open(io.BytesIO(raw)) as img:
             frame = np.asarray(img.convert("RGB"))
-    except UnidentifiedImageError:
-        raise HTTPException(status_code=415, detail="Not a readable image (send JPEG or PNG)")
+    except UnidentifiedImageError as err:
+        raise HTTPException(status_code=415, detail="Not a readable image (send JPEG or PNG)") from err
     model: SmokeModel = request.app.state.model
     result = await run_in_threadpool(model.score, frame)
     return FrameScore(
-        smoke=result.smoke, score=result.score, threshold=result.threshold, width=result.width, height=result.height,
-        tiles=[TileScore(**t.__dict__) for t in result.tiles], model_name=model.name, model_version=model.version,
-        latency_ms=result.latency_ms, whole_photo=result.whole,
+        smoke=result.smoke,
+        score=result.score,
+        threshold=result.threshold,
+        width=result.width,
+        height=result.height,
+        tiles=[TileScore(**t.__dict__) for t in result.tiles],
+        model_name=model.name,
+        model_version=model.version,
+        latency_ms=result.latency_ms,
+        whole_photo=result.whole,
     )
 
 

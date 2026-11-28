@@ -17,7 +17,7 @@ def test_two_of_three_smoke_photos_raise_an_alert(add_frame, session):
     _, alert = add_frame("west-60", 2, 0.90)
     assert alert is not None
     assert alert.status is AlertStatus.NEEDS_REVIEW
-    assert [l.camera.key for l in alert.cameras] == ["west-60"]
+    assert [link.camera.key for link in alert.cameras] == ["west-60"]
     assert alert.peak_score == pytest.approx(0.95)
     # A new alert tells the duty officer straight away.
     sent = session.scalars(select(Notification).where(Notification.alert_id == alert.id)).all()
@@ -43,7 +43,7 @@ def test_crossing_cameras_join_one_alert_with_a_location(add_frame):
     add_frame("east-300", 1, 0.9)
     _, joined = add_frame("east-300", 2, 0.9)
     assert joined.code == first.code
-    assert {l.camera.key for l in joined.cameras} == {"west-60", "east-300"}
+    assert {link.camera.key for link in joined.cameras} == {"west-60", "east-300"}
     assert joined.lat is not None and joined.lat > 43.70   # north of the two towers
 
 

@@ -46,7 +46,8 @@ from PIL import Image  # noqa: E402
 
 from src.common.env import data_dir, find_input, git_sha, output_dir  # noqa: E402
 from src.data import dfire  # noqa: E402
-from src.data.views import SPEC as VIEW_SPEC, TILE, fit, photo_views, whole_view  # noqa: E402
+from src.data.views import SPEC as VIEW_SPEC  # noqa: E402
+from src.data.views import TILE, photo_views, whole_view
 from src.evaluate.metrics import best_f1_threshold, frame_scores  # noqa: E402
 from src.train.tile_classifier import LAYOUT, build_model, load_frames, read_tile, sample_epoch, tile_table  # noqa: E402
 

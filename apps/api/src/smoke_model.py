@@ -113,7 +113,7 @@ class SmokeModel:
             score=score,
             smoke=score >= self.threshold,
             threshold=self.threshold,
-            tiles=[Tile(y=y, x=x, size=t, probability=float(p)) for (y, x), p in zip(origins, tile_probs)],
+            tiles=[Tile(y=y, x=x, size=t, probability=float(p)) for (y, x), p in zip(origins, tile_probs, strict=True)],
             width=width,
             height=height,
             latency_ms=round((time.perf_counter() - started) * 1000, 1),

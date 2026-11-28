@@ -176,19 +176,25 @@ def main() -> None:
         return "n/a" if x is None or x != x else f"{x:.2f}{unit}"
 
     lines = [
-        f"# Time to detect on real fires (FIgLib): {result['model']} {result['model_version']}", "",
+        f"# Time to detect on real fires (FIgLib): {result['model']} {result['model_version']}",
+        "",
         f"Alert rule chosen on val: **{best['rule']} frames ≥ {best['threshold']:.2f}** "
-        f"(target ≤ {TARGET_FALSE_ALARMS_PER_DAY} false alarms per camera-day).", "",
+        f"(target ≤ {TARGET_FALSE_ALARMS_PER_DAY} false alarms per camera-day).",
+        "",
         "| | Fires caught | Within 10 min | Mean time to detect | Median | False alarms / camera-day |",
         "|---|---|---|---|---|---|",
         f"| val | {pct(best['event_recall'])} | {pct(best['detected_within_10_min'])} | "
-        f"{num(best['ttd_mean_min'], ' min')} | {num(best['ttd_median_min'], ' min')} | {num(best['false_alarms_per_camera_day'])} |",
+        f"{num(best['ttd_mean_min'], ' min')} | {num(best['ttd_median_min'], ' min')} | "
+        f"{num(best['false_alarms_per_camera_day'])} |",
         f"| **test ({test_m['fire_events']} fire events)** | **{pct(test_m['event_recall'])}** | "
         f"**{pct(test_m['detected_within_10_min'])}** | **{num(test_m['ttd_mean_min'], ' min')}** | "
-        f"{num(test_m['ttd_median_min'], ' min')} | **{num(test_m['false_alarms_per_camera_day'])}** |", "",
-        f"Test frame-level: precision {test_frame.precision:.3f}, recall {test_frame.recall:.3f}, F1 {test_frame.f1:.3f}.", "",
+        f"{num(test_m['ttd_median_min'], ' min')} | **{num(test_m['false_alarms_per_camera_day'])}** |",
+        "",
+        f"Test frame-level: precision {test_frame.precision:.3f}, recall {test_frame.recall:.3f}, F1 {test_frame.f1:.3f}.",
+        "",
         "Targets (docs/research/02): mean ≤ 3 min, ≥ 90% within 10 min, ≤ 0.5 false alarms per camera-day. "
-        "SmokeyNet: 3.12 min mean on FIgLib.", "",
+        "SmokeyNet: 3.12 min mean on FIgLib.",
+        "",
         "Time is measured from onset (first frame with visible smoke), never from ignition.",
         "Data courtesy of HPWREN, University of California San Diego (https://www.hpwren.ucsd.edu/).",
     ]

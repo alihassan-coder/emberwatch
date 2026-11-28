@@ -31,7 +31,7 @@ import io
 import json
 import math
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -247,7 +247,7 @@ def assign_splits(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str], dict]:
 # ── Reporting ──────────────────────────────────────────────────────────────
 
 def compute_stats(df: pd.DataFrame, heldout: list[str], dedup: dict) -> dict:
-    boxes = [(b, w, h) for bs, w, h in zip(df["boxes_cxcywh_norm"], df["width"], df["height"]) for b in bs]
+    boxes = [(b, w, h) for bs, w, h in zip(df["boxes_cxcywh_norm"], df["width"], df["height"], strict=True) for b in bs]
     area = np.array([b[2] * b[3] for b, _, _ in boxes]) if boxes else np.array([0.0])
     width_px_640 = np.array([b[2] * 640 * min(1.0, w / max(w, h)) for b, w, h in boxes]) if boxes else np.array([0.0])
     pct = lambda a: {f"p{p}": round(float(np.percentile(a, p)), 5) for p in (5, 25, 50, 75, 95)}  # noqa: E731
@@ -327,7 +327,7 @@ def write_lockfile(df: pd.DataFrame, heldout: list[str], path: Path) -> None:
         "heldout_image_fraction": HELDOUT_IMAGE_FRACTION,
         "phash_max_distance": PHASH_MAX_DISTANCE,
         "heldout_sites": heldout,
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_sha": git_sha(),
         "sha256": digest,
         "splits": splits,

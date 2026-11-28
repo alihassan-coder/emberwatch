@@ -129,7 +129,9 @@ class Alert(Base):
     lon: Mapped[float | None] = mapped_column(Float)
 
     cameras: Mapped[list[AlertCamera]] = relationship(back_populates="alert", cascade="all, delete-orphan")
-    reviews: Mapped[list[Review]] = relationship(back_populates="alert", cascade="all, delete-orphan", order_by="Review.created_at")
+    reviews: Mapped[list[Review]] = relationship(
+        back_populates="alert", cascade="all, delete-orphan", order_by="Review.created_at"
+    )
     notifications: Mapped[list[Notification]] = relationship(back_populates="alert", cascade="all, delete-orphan")
 
 
@@ -155,7 +157,7 @@ class Review(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     alert_id: Mapped[int] = mapped_column(ForeignKey("alerts.id", ondelete="CASCADE"), index=True)
     verdict: Mapped[Verdict] = mapped_column(_enum(Verdict, "review_verdict"))
-    reason: Mapped[str | None] = mapped_column(String(120))     # e.g. "Low cloud" when dismissed
+    reason: Mapped[str | None] = mapped_column(String(120))  # e.g. "Low cloud" when dismissed
     reviewer: Mapped[str] = mapped_column(String(80), default="operator")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
@@ -171,7 +173,9 @@ class Notification(Base):
     alert_id: Mapped[int] = mapped_column(ForeignKey("alerts.id", ondelete="CASCADE"), index=True)
     channel: Mapped[Channel] = mapped_column(_enum(Channel, "notification_channel"))
     target: Mapped[str] = mapped_column(String(200))
-    status: Mapped[DeliveryStatus] = mapped_column(_enum(DeliveryStatus, "delivery_status"), default=DeliveryStatus.PENDING, index=True)
+    status: Mapped[DeliveryStatus] = mapped_column(
+        _enum(DeliveryStatus, "delivery_status"), default=DeliveryStatus.PENDING, index=True
+    )
     payload: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

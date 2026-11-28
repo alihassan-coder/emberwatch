@@ -269,7 +269,7 @@ def main() -> None:
         "| Frames | Precision | Recall | F1 | Threshold |", "|---|---|---|---|---|",
         f"| val (in-distribution) | {chosen.precision:.3f} | {chosen.recall:.3f} | {chosen.f1:.3f} | {chosen.threshold:.3f} |",
         f"| **test (held-out sites)** | **{test.precision:.3f}** | **{test.recall:.3f}** | **{test.f1:.3f}** | same |", "",
-        f"Target from the research: frame F1 ≥ 0.82 (SmokeyNet 82.6).", "",
+        "Target from the research: frame F1 ≥ 0.82 (SmokeyNet 82.6).", "",
         f"ONNX: {export['onnx_mb']} MB, parity ok: {export['parity_ok']} "
         f"(max diff {export['parity_max_abs_diff']}), CPU {export['cpu_ms_batch1_p50']} ms per tile "
         f"(≈ {export['cpu_ms_batch1_p50'] * LAYOUT.n_tiles:.0f} ms per frame at batch 1).",

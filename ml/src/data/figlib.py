@@ -33,7 +33,7 @@ import tarfile
 import time
 import urllib.request
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -233,9 +233,9 @@ def write_report(stats: dict, path: Path) -> None:
         "| Split | Sequences | Fire events | Stations | Frames | Smoke frames |", "|---|---|---|---|---|---|",
     ]
     for name, v in s["splits"].items():
-        lines.append(f"| {name} | {v['sequences']} | {v['fire_events']} | {v['stations']} | {v['frames']} | {v['smoke_frames']} |")
-    lines += ["", f"Held-out stations: {', '.join(s['heldout_stations'])}",
-              f"Failed downloads: {len(s['failed_sequences'])}", ""]
+        cells = [name, v["sequences"], v["fire_events"], v["stations"], v["frames"], v["smoke_frames"]]
+        lines.append("| " + " | ".join(str(c) for c in cells) + " |")
+    lines += ["", f"Held-out stations: {', '.join(s['heldout_stations'])}", f"Failed downloads: {len(s['failed_sequences'])}", ""]
     path.write_text("\n".join(lines))
 
 
@@ -261,16 +261,18 @@ def main() -> None:
 
     started, rows, failed = time.time(), [], []
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(fetch_sequence, r.sequence, str(frames_root / r.split)): r.sequence
-                   for r in seqs.itertuples()}
+        futures = {pool.submit(fetch_sequence, r.sequence, str(frames_root / r.split)): r.sequence for r in seqs.itertuples()}
         for i, fut in enumerate(as_completed(futures), 1):
             res = fut.result()
             rows += res["rows"]
             if not res["ok"]:
                 failed.append({"sequence": res["sequence"], "error": res["error"]})
             if i % 10 == 0 or i == len(futures):
-                print(f"[download] {i}/{len(futures)} sequences, {len(rows)} frames, "
-                      f"{len(failed)} failed, {(time.time() - started) / 60:.1f} min", flush=True)
+                print(
+                    f"[download] {i}/{len(futures)} sequences, {len(rows)} frames, "
+                    f"{len(failed)} failed, {(time.time() - started) / 60:.1f} min",
+                    flush=True,
+                )
 
     frames = pd.DataFrame(rows)
     frames["smoke_visible"] = frames["offset_s"] >= 0
@@ -281,12 +283,21 @@ def main() -> None:
     seqs.to_parquet(out / "sequences.parquet", index=False)
     frames.to_parquet(out / "frames.parquet", index=False)
     splits = {s: sorted(g["sequence"]) for s, g in seqs.groupby("split")}
-    (out / "splits_v1.json").write_text(json.dumps({
-        "source": BASE_URL, "seed": SEED, "fractions": SPLIT_FRACTIONS, "heldout_stations": heldout,
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "git_sha": git_sha(),
-        "sha256": {k: hashlib.sha256("\n".join(v).encode()).hexdigest() for k, v in splits.items()},
-        "splits": splits,
-    }, indent=1))
+    (out / "splits_v1.json").write_text(
+        json.dumps(
+            {
+                "source": BASE_URL,
+                "seed": SEED,
+                "fractions": SPLIT_FRACTIONS,
+                "heldout_stations": heldout,
+                "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "git_sha": git_sha(),
+                "sha256": {k: hashlib.sha256("\n".join(v).encode()).hexdigest() for k, v in splits.items()},
+                "splits": splits,
+            },
+            indent=1,
+        )
+    )
 
     shard_of: dict[str, str] = {}
     for split_dir in sorted(p for p in frames_root.iterdir() if p.is_dir()):
@@ -300,6 +311,7 @@ def main() -> None:
     (out / "stats.json").write_text(json.dumps(stats, indent=2, default=str))
     write_report(stats, out / "data_report.md")
     print((out / "data_report.md").read_text())
+
 
 if __name__ == "__main__":
     main()

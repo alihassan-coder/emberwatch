@@ -7,7 +7,7 @@ fake model, so they don't need the 16 MB ONNX file.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -18,7 +18,7 @@ from src import config as config_module
 from src.db import session as session_module
 
 API_ROOT = Path(__file__).resolve().parents[1]
-T0 = datetime(2026, 1, 8, 12, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 8, 12, 0, tzinfo=UTC)
 
 
 def _clear_caches() -> None:
