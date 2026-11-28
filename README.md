@@ -1,5 +1,7 @@
 # EmberWatch
 
+[![CI](https://github.com/alihassan-coder/emberwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/alihassan-coder/emberwatch/actions/workflows/ci.yml)
+
 **Wildfire smoke early warning from fire-watch tower cameras.** A Keras model checks every camera photo for smoke, a simple rule turns a few smoke photos into one alert, nearby towers' bearings are crossed to estimate where the fire is, and a duty officer confirms or dismisses it before the fire station is called.
 
 ![The home page: real tower-camera footage, the model's smoke score per photo, and the alert going out](docs/images/home.png)
@@ -54,7 +56,7 @@ Three independent projects in one repo. They share files and HTTP, never code: `
 - **Model store:** each model version lives in `apps/api/models/versions/<version>/` with its checksum. The API refuses a damaged file and records which version scored every photo.
 - **Database:** SQLAlchemy 2 models with Alembic migrations, SQLite locally. Moving to Postgres needs a new `EMBERWATCH_DATABASE_URL` and its driver, not code changes.
 
-Key decisions and the reasons for them are in [docs/decisions/](docs/decisions/). Domain terms (onset, plume, time to detect…) are defined in [GLOSSARY.md](GLOSSARY.md).
+Key decisions and the reasons for them are in [docs/decisions/](docs/decisions/). Every experiment and what it taught us is in [docs/experiments/](docs/experiments/), and the model's intended use, data and known weaknesses are in the [model card](docs/model-card.md). Domain terms (onset, plume, time to detect…) are defined in [GLOSSARY.md](GLOSSARY.md).
 
 ## Run it
 
@@ -76,7 +78,10 @@ pnpm dev
 
 The API needs a model in `apps/api/models/`; see [apps/api/README.md](apps/api/README.md). Without it, the web app still runs its demos and shows the model as offline.
 
-Tests: `cd apps/api && uv run pytest` (34 tests: alert rule, plume grouping, reviews, model store, migrations, HTTP).
+Tests run on every push (GitHub Actions):
+
+- `cd apps/api && uv run pytest`: 39 tests (alert rule, plume grouping, reviews, model store, photo views, migrations, HTTP)
+- `cd ml && uv run pytest`: 21 tests (tiling, photo views, dataset labels, evaluation metrics)
 
 ## Credits
 
